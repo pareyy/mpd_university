@@ -199,6 +199,21 @@ CREATE TABLE kontak (
     created_at DATETIME DEFAULT NOW()
 );
 
+-- Tabel articles (untuk berita/artikel)
+CREATE TABLE articles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    excerpt TEXT,
+    author_id INT,
+    status VARCHAR(20) DEFAULT 'published',
+    featured_image VARCHAR(255),
+    published_at DATETIME DEFAULT NOW(),
+    created_at DATETIME DEFAULT NOW(),
+    updated_at DATETIME DEFAULT NOW(),
+    FOREIGN KEY (author_id) REFERENCES users(id)
+);
+
 -- ===================================
 -- DATA SAMPLE
 -- ===================================
@@ -285,3 +300,77 @@ INSERT INTO kalender_akademik (tanggal, judul, deskripsi, kategori) VALUES
 INSERT INTO berita_akademik (judul, isi, tanggal, gambar, ringkasan, penulis, status) VALUES
 ('MPD University Raih Akreditasi Unggul', 'MPD University berhasil meraih status Akreditasi Unggul dari Badan Akreditasi Nasional Perguruan Tinggi (BAN-PT) untuk periode 2023-2028. Pencapaian ini merupakan hasil dari upaya seluruh civitas akademika dalam meningkatkan kualitas pendidikan tinggi.\n\nPenilaian akreditasi meliputi sembilan kriteria, termasuk visi misi, tata kelola, mahasiswa, sumber daya manusia, keuangan, pendidikan, penelitian, pengabdian kepada masyarakat, dan luaran-capaian. MPD University berhasil mendapatkan nilai sangat baik pada semua aspek tersebut.\n\nRektor MPD University, Prof. Dr. Ahmad Fauzi, menyampaikan apresiasi kepada seluruh pihak yang telah berkontribusi dalam pencapaian ini. "Akreditasi Unggul ini menjadi bukti komitmen kami dalam memberikan pendidikan tinggi berkualitas," ujarnya.', '2023-07-05', 'akreditasi.jpg', 'MPD University berhasil meraih status Akreditasi Unggul dari Badan Akreditasi Nasional Perguruan Tinggi (BAN-PT) untuk periode 2023-2028.', 'Tim Humas MPD University', 'published'),
 ('Program Beasiswa Baru untuk Mahasiswa Berprestasi', 'MPD University bekerja sama dengan lima perusahaan teknologi terkemuka meluncurkan program beasiswa baru untuk mahasiswa berprestasi di bidang teknologi dan sains. Program beasiswa ini akan mencakup biaya kuliah penuh dan tunjangan bulanan selama masa studi.\n\nProgram ini terbuka untuk mahasiswa dari Fakultas Teknik, Fakultas Ilmu Komputer, dan Fakultas Sains dengan IPK minimal 3.50. Selain prestasi akademik, seleksi juga akan mempertimbangkan portfolio proyek dan keterlibatan dalam kegiatan pengembangan teknologi.\n\n"Kami ingin mendukung talenta-talenta terbaik untuk berkembang tanpa terkendala masalah finansial," kata Dr. Siti Rahma, Wakil Rektor Bidang Kemahasiswaan.\n\nPendaftaran program beasiswa akan dibuka pada 1 Agustus 2023 dan berakhir pada 30 Agustus 2023.', '2023-06-28', 'beasiswa.jpg', 'MPD University bekerja sama dengan industri terkemuka meluncurkan program beasiswa baru untuk mahasiswa berprestasi di bidang teknologi dan sains.', 'Departemen Beasiswa', 'published');
+
+-- Insert sample articles (untuk admin)
+INSERT INTO articles (title, content, excerpt, author_id, status, published_at) VALUES
+('Selamat Datang di Sistem Akademik MPD University', 'Sistem Akademik MPD University telah resmi diluncurkan dengan berbagai fitur terdepan untuk mendukung kegiatan akademik mahasiswa, dosen, dan staff administrasi. Sistem ini menyediakan platform terintegrasi untuk manajemen perkuliahan, nilai, absensi, dan berbagai layanan akademik lainnya.\n\nDengan teknologi terkini, kami berkomitmen memberikan pengalaman terbaik bagi seluruh civitas akademika dalam mengakses informasi dan layanan akademik.', 'Sistem Akademik MPD University diluncurkan dengan fitur-fitur terdepan untuk mendukung kegiatan akademik.', 1, 'published', NOW()),
+('Panduan Penggunaan Portal Akademik', 'Portal akademik MPD University dirancang dengan antarmuka yang user-friendly dan mudah diakses. Artikel ini akan memandu Anda dalam menggunakan berbagai fitur yang tersedia, mulai dari login hingga mengakses nilai dan jadwal perkuliahan.\n\nSetiap user memiliki dashboard yang disesuaikan dengan perannya masing-masing, baik sebagai mahasiswa, dosen, maupun admin.', 'Panduan lengkap penggunaan portal akademik MPD University untuk semua user.', 1, 'published', NOW()),
+('Kebijakan Akademik Terbaru 2024', 'MPD University telah mengimplementasikan beberapa kebijakan akademik terbaru yang mulai berlaku pada tahun akademik 2024. Kebijakan ini mencakup sistem penilaian, absensi, dan berbagai prosedur akademik lainnya yang ditujukan untuk meningkatkan kualitas pendidikan.\n\nSemua civitas akademika diharapkan memahami dan mengikuti kebijakan-kebijakan yang telah ditetapkan.', 'Kebijakan akademik terbaru MPD University yang berlaku mulai tahun 2024.', 1, 'published', NOW()),
+('Tips Sukses Kuliah Online', 'Menghadapi era digital, MPD University menyediakan berbagai tips dan strategi untuk mahasiswa agar dapat sukses dalam perkuliahan online. Artikel ini membahas tentang manajemen waktu, teknologi yang dibutuhkan, dan cara efektif mengikuti kuliah virtual.\n\nKuliah online memerlukan disiplin dan strategi khusus agar dapat mencapai hasil pembelajaran yang optimal.', 'Tips dan strategi sukses mengikuti perkuliahan online di MPD University.', 1, 'published', NOW()),
+('Prestasi Mahasiswa MPD University 2024', 'Mahasiswa MPD University kembali meraih berbagai prestasi gemilang di tingkat nasional dan internasional. Dari kompetisi programming, penelitian ilmiah, hingga inovasi teknologi, mahasiswa kami terus menunjukkan dedikasi dan kemampuan terbaik.\n\nPrestasi-prestasi ini membuktikan kualitas pendidikan dan pembinaan yang diberikan oleh MPD University.', 'Berbagai prestasi gemilang yang diraih mahasiswa MPD University di tahun 2024.', 1, 'published', NOW());
+
+-- ===================================
+-- TABEL ADMIN DAN SISTEM
+-- ===================================
+
+-- Tabel sistem pengaturan/konfigurasi
+CREATE TABLE system_settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    setting_key VARCHAR(100) NOT NULL UNIQUE,
+    setting_value TEXT,
+    setting_description VARCHAR(255),
+    updated_by INT,
+    updated_at DATETIME DEFAULT NOW(),
+    FOREIGN KEY (updated_by) REFERENCES users(id)
+);
+
+-- Tabel log aktivitas admin
+CREATE TABLE admin_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    description TEXT,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at DATETIME DEFAULT NOW(),
+    FOREIGN KEY (admin_id) REFERENCES users(id)
+);
+
+-- Tabel notifikasi sistem
+CREATE TABLE notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    recipient_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(50) DEFAULT 'info',
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at DATETIME DEFAULT NOW(),
+    FOREIGN KEY (recipient_id) REFERENCES users(id)
+);
+
+-- Insert sample system settings
+INSERT INTO system_settings (setting_key, setting_value, setting_description, updated_by) VALUES
+('site_name', 'MPD University - Sistem Akademik', 'Nama website sistem akademik', 1),
+('site_description', 'Portal akademik terpadu untuk mahasiswa, dosen, dan administrasi MPD University', 'Deskripsi website', 1),
+('academic_year', '2024/2025', 'Tahun akademik aktif', 1),
+('semester_active', 'Ganjil', 'Semester aktif saat ini', 1),
+('registration_open', 'true', 'Status pendaftaran mata kuliah', 1),
+('max_sks_per_semester', '24', 'Maksimal SKS per semester', 1),
+('min_attendance_percentage', '75', 'Minimal persentase kehadiran', 1),
+('late_payment_fee', '50000', 'Denda keterlambatan pembayaran', 1),
+('contact_email', 'admin@mpd.ac.id', 'Email kontak utama', 1),
+('contact_phone', '021-1234567', 'Nomor telepon kontak', 1);
+
+-- Insert sample notifications untuk admin
+INSERT INTO notifications (recipient_id, title, message, type, is_read) VALUES
+(1, 'Selamat Datang, Administrator!', 'Selamat datang di sistem akademik MPD University. Anda memiliki akses penuh untuk mengelola semua aspek sistem.', 'welcome', FALSE),
+(1, 'Data Mahasiswa Diperbarui', 'Terdapat 5 data mahasiswa baru yang telah ditambahkan ke sistem.', 'info', FALSE),
+(1, 'Laporan Mingguan Tersedia', 'Laporan aktivitas sistem minggu ini telah tersedia untuk diunduh.', 'report', FALSE);
+
+-- Insert sample admin logs
+INSERT INTO admin_logs (admin_id, action, description, ip_address) VALUES
+(1, 'LOGIN', 'Administrator berhasil login ke sistem', '127.0.0.1'),
+(1, 'CREATE_USER', 'Menambahkan user dosen baru: Dr. Sari Dewi', '127.0.0.1'),
+(1, 'UPDATE_SETTINGS', 'Memperbarui pengaturan sistem akademik', '127.0.0.1'),
+(1, 'VIEW_REPORTS', 'Mengakses laporan data mahasiswa', '127.0.0.1'),
+(1, 'BACKUP_DATABASE', 'Melakukan backup database sistem', '127.0.0.1');

@@ -2,8 +2,8 @@
 // Start session
 session_start();
 
-// Check if user is logged in and is a dosen
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'dosen') {
+// Check if user is logged in and is an admin
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../login.php");
     exit();
 }
@@ -11,11 +11,20 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'dosen') {
 // Include database connection
 require_once '../koneksi.php';
 
-// Get dosen information
+// Get admin information
 $user_id = $_SESSION['user_id'];
 $query = "SELECT * FROM users WHERE id = '$user_id'";
 $result = mysqli_query($conn, $query);
 $user = mysqli_fetch_assoc($result);
+
+// Get admin statistics
+$stats_query = "SELECT 
+    (SELECT COUNT(*) FROM users WHERE role = 'mahasiswa') as total_mahasiswa,
+    (SELECT COUNT(*) FROM users WHERE role = 'dosen') as total_dosen,
+    (SELECT COUNT(*) FROM mata_kuliah) as total_matkul,
+    (SELECT COUNT(*) FROM articles) as total_articles";
+$stats_result = mysqli_query($conn, $stats_query);
+$stats = mysqli_fetch_assoc($stats_result);
 
 // Handle form submission for profile update
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -24,7 +33,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $username = mysqli_real_escape_string($conn, $_POST['username']);
             $email = mysqli_real_escape_string($conn, $_POST['email']);
             $full_name = mysqli_real_escape_string($conn, $_POST['full_name']);
-            $nip = mysqli_real_escape_string($conn, $_POST['nip']);
             $phone = mysqli_real_escape_string($conn, $_POST['phone']);
             $alamat = mysqli_real_escape_string($conn, $_POST['alamat']);
             
@@ -32,7 +40,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                            username = '$username',
                            email = '$email',
                            full_name = '$full_name',
-                           nip = '$nip',
                            phone = '$phone',
                            alamat = '$alamat'
                            WHERE id = '$user_id'";
@@ -55,8 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Verify current password
             if (password_verify($current_password, $user['password'])) {
                 if ($new_password === $confirm_password) {
-                    $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-                    $update_query = "UPDATE users SET password = '$hashed_password' WHERE id = '$user_id'";
+                    $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);                    $update_query = "UPDATE users SET password = '$hashed_password' WHERE id = '$user_id'";
                     
                     if (mysqli_query($conn, $update_query)) {
                         $success_message = "Password berhasil diubah!";
@@ -78,20 +84,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profil Dosen - MPD University</title>
+    <title>Profil Admin - MPD University</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/dashboard.css">
     <!-- Font Awesome CDN for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <?php include 'includes/nav_dosen.php'; ?>
+    <?php include 'includes/nav_admin.php'; ?>
 
     <main>
         <div class="dashboard-container">
             <div class="dashboard-header">
-                <h1><i class="fas fa-user"></i> Profil Dosen</h1>
-                <p>Kelola informasi profil dan pengaturan akun Anda</p>
+                <h1><i class="fas fa-user-shield"></i> Profil Admin</h1>
+                <p>Kelola informasi profil dan pengaturan akun administrator</p>
             </div>
 
             <!-- Alert Messages -->
@@ -120,24 +126,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <div class="profile-info">
                             <h3><?php echo htmlspecialchars($user['full_name'] ?? $user['username']); ?></h3>
                             <p class="profile-role">
-                                <i class="fas fa-chalkboard-teacher"></i> Dosen
+                                <i class="fas fa-user-shield"></i> Administrator
                             </p>
-                            <p class="profile-nip">
-                                <i class="fas fa-id-card"></i> NIP: <?php echo htmlspecialchars($user['nip'] ?? '-'); ?>
+                            <p class="profile-id">
+                                <i class="fas fa-id-badge"></i> ID: <?php echo htmlspecialchars($user['id']); ?>
                             </p>
                         </div>
                         <div class="profile-stats">
                             <div class="stat-item">
-                                <span class="stat-number">5</span>
-                                <span class="stat-label">Mata Kuliah</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-number">125</span>
+                                <span class="stat-number"><?php echo $stats['total_mahasiswa']; ?></span>
                                 <span class="stat-label">Mahasiswa</span>
                             </div>
                             <div class="stat-item">
-                                <span class="stat-number">3</span>
-                                <span class="stat-label">Tahun Mengajar</span>
+                                <span class="stat-number"><?php echo $stats['total_dosen']; ?></span>
+                                <span class="stat-label">Dosen</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number"><?php echo $stats['total_matkul']; ?></span>
+                                <span class="stat-label">Mata Kuliah</span>
                             </div>
                         </div>
                     </div>
@@ -147,9 +153,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <h4><i class="fas fa-bolt"></i> Aksi Cepat</h4>
                         <ul>
                             <li><a href="index.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                            <li><a href="mahasiswa.php"><i class="fas fa-users"></i> Mahasiswa</a></li>
+                            <li><a href="dosen.php"><i class="fas fa-chalkboard-teacher"></i> Dosen</a></li>
                             <li><a href="mata_kuliah.php"><i class="fas fa-book"></i> Mata Kuliah</a></li>
-                            <li><a href="jadwal.php"><i class="fas fa-calendar"></i> Jadwal</a></li>
-                            <li><a href="nilai.php"><i class="fas fa-star"></i> Nilai</a></li>
+                            <li><a href="pengaturan.php"><i class="fas fa-cog"></i> Pengaturan</a></li>
                         </ul>
                     </div>
                 </div>
@@ -191,23 +198,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     </div>
                                     
                                     <div class="form-group">
-                                        <label for="nip">NIP</label>
-                                        <input type="text" id="nip" name="nip" class="form-control" 
-                                               value="<?php echo htmlspecialchars($user['nip'] ?? ''); ?>" readonly>
+                                        <label for="phone">Nomor Telepon</label>
+                                        <input type="tel" id="phone" name="phone" class="form-control" 
+                                               value="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>" readonly>
                                     </div>
                                 </div>
                                 
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label for="phone">Nomor Telepon</label>
-                                        <input type="tel" id="phone" name="phone" class="form-control" 
-                                               value="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>" readonly>
+                                        <label for="role">Role</label>
+                                        <input type="text" class="form-control" 
+                                               value="Administrator" readonly disabled>
                                     </div>
                                     
                                     <div class="form-group">
-                                        <label for="role">Role</label>
+                                        <label for="created_at">Bergabung Sejak</label>
                                         <input type="text" class="form-control" 
-                                               value="Dosen" readonly disabled>
+                                               value="<?php echo date('d/m/Y', strtotime($user['created_at'])); ?>" readonly disabled>
                                     </div>
                                 </div>
                                 
@@ -261,7 +268,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         <li>Minimal 8 karakter</li>
                                         <li>Mengandung huruf besar dan kecil</li>
                                         <li>Mengandung angka</li>
-                                        <li>Mengandung karakter khusus</li>
+                                        <li>Mengandung karakter khusus (opsional)</li>
                                     </ul>
                                 </div>
                                 
@@ -299,6 +306,71 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     <label>Status Akun</label>
                                     <span class="status-badge status-active">Aktif</span>
                                 </div>
+                                
+                                <div class="info-item">
+                                    <label>Level Akses</label>
+                                    <span class="status-badge status-admin">Administrator</span>
+                                </div>
+                                
+                                <div class="info-item">
+                                    <label>Total Artikel</label>
+                                    <span><?php echo $stats['total_articles']; ?> artikel</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Admin Activity Statistics -->
+                    <div class="content-section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-chart-bar"></i> Statistik Aktivitas</h2>
+                        </div>
+
+                        <div class="activity-stats">
+                            <div class="activity-grid">
+                                <div class="activity-item">
+                                    <div class="activity-icon">
+                                        <i class="fas fa-calendar-day"></i>
+                                    </div>
+                                    <div class="activity-info">
+                                        <h4>Hari Aktif</h4>
+                                        <p><?php echo floor((time() - strtotime($user['created_at'])) / (60 * 60 * 24)); ?> hari</p>
+                                        <small>Sejak bergabung</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="activity-item">
+                                    <div class="activity-icon">
+                                        <i class="fas fa-users-cog"></i>
+                                    </div>
+                                    <div class="activity-info">
+                                        <h4>Total User</h4>
+                                        <p><?php echo ($stats['total_mahasiswa'] + $stats['total_dosen']); ?> user</p>
+                                        <small>Dikelola sistem</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="activity-item">
+                                    <div class="activity-icon">
+                                        <i class="fas fa-database"></i>
+                                    </div>
+                                    <div class="activity-info">
+                                        <h4>Database</h4>
+                                        <p>Sehat</p>
+                                        <small>Status sistem</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="activity-item">
+                                    <div class="activity-icon">
+                                        <i class="fas fa-shield-check"></i>
+                                    </div>
+                                    <div class="activity-info">
+                                        <h4>Keamanan</h4>
+                                        <p>Optimal</p>
+                                        <small>Level keamanan</small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -307,9 +379,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </main>
 
-    <?php include '../includes/footer.php'; ?>
-
-    <script>
+    <?php include '../includes/footer.php'; ?>    <script>
         function toggleEdit(section) {
             if (section === 'profile') {
                 const form = document.getElementById('profileForm');
@@ -317,7 +387,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 const actions = document.getElementById('profileActions');
                 
                 inputs.forEach(input => {
-                    if (input.name !== 'role') {
+                    if (input.name !== 'role' && !input.disabled) {
                         input.readOnly = false;
                         input.classList.add('editable');
                     }
@@ -349,9 +419,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 this.setCustomValidity('');
             }
         });
-    </script>
-
-    <style>
+    </script>    <style>
         .profile-layout {
             display: grid;
             grid-template-columns: 350px 1fr;
@@ -414,7 +482,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             font-size: 1.5rem;
         }
 
-        .profile-role, .profile-nip {
+        .profile-role, .profile-id {
             color: #6b7280;
             margin: 0.25rem 0;
             font-size: 0.875rem;
@@ -595,10 +663,163 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             color: #6b7280;
         }
 
+        .form-control[disabled] {
+            background: #f3f4f6;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+
         .form-control:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            align-items: center;
+        }
+
+        .password-requirements {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .password-requirements h4 {
+            margin: 0 0 0.5rem 0;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+
+        .password-requirements ul {
+            margin: 0;
+            padding-left: 1.25rem;
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .password-requirements li {
+            margin: 0.25rem 0;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .info-item label {
+            font-weight: 600;
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .info-item span {
+            color: #374151;
+            font-size: 1rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-admin {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .activity-stats {
+            padding: 2rem;
+        }
+
+        .activity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.5rem;
+            background: #f8fafc;
+            border-radius: 12px;
+            border-left: 4px solid #2563eb;
+        }
+
+        .activity-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            flex-shrink: 0;
+        }
+
+        .activity-info h4 {
+            margin: 0 0 0.25rem 0;
+            color: #6b7280;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .activity-info p {
+            margin: 0 0 0.25rem 0;
+            color: #374151;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .activity-info small {
+            color: #9ca3af;
+            font-size: 0.75rem;
+        }
+
+        .alert {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .alert-danger {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
         }
 
         /* Mobile responsive */
@@ -618,6 +839,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             .profile-card {
                 padding: 1.5rem;
+            }
+            
+            .info-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+            
+            .activity-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
             }
         }
 
@@ -671,7 +902,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 margin: 0;
             }
 
-            .form-container {
+            .form-container, .info-container, .activity-stats {
                 padding: 1rem;
                 margin-bottom: 1rem;
                 border-radius: 8px;
@@ -726,15 +957,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 touch-action: manipulation;
             }
 
-            .quick-links {
+            .quick-actions-sidebar {
                 padding: 1rem;
             }
 
-            .quick-links ul {
+            .quick-actions-sidebar ul {
                 gap: 0.5rem;
             }
 
-            .quick-links a {
+            .quick-actions-sidebar a {
                 padding: 0.75rem 1rem;
                 border-radius: 8px;
                 font-size: 0.9rem;
@@ -744,21 +975,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 justify-content: center;
             }
 
-            .teaching-load {
-                padding: 1rem;
-            }
-
-            .stats-grid {
+            .info-grid {
                 grid-template-columns: 1fr;
                 gap: 0.75rem;
             }
 
-            .stat-item {
+            .activity-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+
+            .activity-item {
                 padding: 1rem;
             }
 
-            .stat-value {
-                font-size: 1.5rem;
+            .activity-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 1.25rem;
             }
 
             .alert {
@@ -806,7 +1040,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 font-size: 0.8rem;
             }
 
-            .form-container {
+            .form-container, .info-container, .activity-stats {
                 padding: 0.75rem;
             }
 
@@ -833,26 +1067,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 font-size: 0.9rem;
             }
 
-            .quick-links {
+            .quick-actions-sidebar {
                 padding: 0.75rem;
             }
 
-            .quick-links a {
+            .quick-actions-sidebar a {
                 padding: 0.625rem 0.75rem;
                 font-size: 0.85rem;
                 min-height: 40px;
             }
 
-            .teaching-load {
+            .activity-item {
                 padding: 0.75rem;
             }
 
-            .stat-item {
-                padding: 0.75rem;
-            }
-
-            .stat-value {
-                font-size: 1.25rem;
+            .activity-icon {
+                width: 45px;
+                height: 45px;
+                font-size: 1.1rem;
             }
 
             .alert {
@@ -874,7 +1106,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 gap: 1rem;
             }
 
-            .stats-grid {
+            .info-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .activity-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
         }

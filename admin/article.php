@@ -17,50 +17,6 @@ $query = "SELECT * FROM users WHERE id = '$user_id'";
 $result = mysqli_query($conn, $query);
 $user = mysqli_fetch_assoc($result);
 
-// Sample articles data
-$articles_data = [
-    [
-        'id' => 1,
-        'title' => 'Pendaftaran Mahasiswa Baru 2024/2025',
-        'content' => 'MPD University membuka pendaftaran mahasiswa baru untuk tahun akademik 2024/2025. Pendaftaran dimulai dari tanggal 1 Januari hingga 31 Maret 2024.',
-        'category' => 'Pendaftaran',
-        'status' => 'Published',
-        'featured_image' => 'pendaftaran.jpg',
-        'created_at' => '2024-01-15',
-        'author' => 'Admin'
-    ],
-    [
-        'id' => 2,
-        'title' => 'Seminar Teknologi AI dan Machine Learning',
-        'content' => 'Program Studi Teknik Informatika mengadakan seminar nasional tentang perkembangan AI dan Machine Learning di era digital.',
-        'category' => 'Event',
-        'status' => 'Published',
-        'featured_image' => 'seminar-ai.jpg',
-        'created_at' => '2024-02-10',
-        'author' => 'Admin'
-    ],
-    [
-        'id' => 3,
-        'title' => 'Jadwal Ujian Tengah Semester Genap 2023/2024',
-        'content' => 'Pengumuman jadwal Ujian Tengah Semester (UTS) untuk semester genap tahun akademik 2023/2024.',
-        'category' => 'Akademik',
-        'status' => 'Draft',
-        'featured_image' => 'uts-schedule.jpg',
-        'created_at' => '2024-03-05',
-        'author' => 'Admin'
-    ],
-    [
-        'id' => 4,
-        'title' => 'Program Magang Industri Semester 6',
-        'content' => 'Informasi lengkap mengenai program magang industri untuk mahasiswa semester 6 di berbagai perusahaan teknologi.',
-        'category' => 'Magang',
-        'status' => 'Published',
-        'featured_image' => 'magang.jpg',
-        'created_at' => '2024-02-28',
-        'author' => 'Admin'
-    ]
-];
-
 $message = '';
 $message_type = '';
 
@@ -172,49 +128,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </form>
                 </div>
             </div>
-
-            <!-- Articles List -->
-            <div class="dashboard-section">
-                <h2><i class="fas fa-list"></i> Daftar Artikel</h2>
-                <div class="articles-grid">
-                    <?php foreach ($articles_data as $article): ?>
-                        <div class="article-card">
-                            <div class="article-image">
-                                <img src="../assets/img/<?php echo $article['featured_image']; ?>" alt="<?php echo htmlspecialchars($article['title']); ?>" onerror="this.src='../assets/img/default-article.jpg'">
-                                <div class="article-status">
-                                    <span class="status-badge status-<?php echo strtolower($article['status']); ?>">
-                                        <?php echo $article['status']; ?>
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="article-content">
-                                <div class="article-meta">
-                                    <span class="category"><?php echo $article['category']; ?></span>
-                                    <span class="date"><?php echo date('d M Y', strtotime($article['created_at'])); ?></span>
-                                </div>
-                                <h3><?php echo htmlspecialchars($article['title']); ?></h3>
-                                <p><?php echo substr(htmlspecialchars($article['content']), 0, 120) . '...'; ?></p>
-                                <div class="article-actions">
-                                    <button class="btn btn-sm btn-info" onclick="viewArticle(<?php echo $article['id']; ?>)">
-                                        <i class="fas fa-eye"></i> Lihat
-                                    </button>
-                                    <button class="btn btn-sm btn-warning" onclick="editArticle(<?php echo $article['id']; ?>)">
-                                        <i class="fas fa-edit"></i> Edit
-                                    </button>
-                                    <?php if ($article['status'] == 'Draft'): ?>
-                                        <button class="btn btn-sm btn-success" onclick="publishArticle(<?php echo $article['id']; ?>)">
-                                            <i class="fas fa-share"></i> Publish
-                                        </button>
-                                    <?php endif; ?>
-                                    <button class="btn btn-sm btn-danger" onclick="deleteArticle(<?php echo $article['id']; ?>)">
-                                        <i class="fas fa-trash"></i> Hapus
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
         </div>
     </main>
 
@@ -271,18 +184,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
             margin-bottom: 2rem;
-        }
-
-        .form-row {
+        }        .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1rem;
             margin-bottom: 1rem;
+            align-items: end;
         }
 
         .form-group {
             display: flex;
             flex-direction: column;
+            width: 100%;
         }
 
         .form-group.full-width {
@@ -293,12 +206,52 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             font-weight: 600;
             margin-bottom: 0.5rem;
             color: #374151;
+            font-size: 0.9rem;
+            text-align: left;
+            display: block;
         }
 
         .form-control {
-            padding: 0.75rem;
+            width: 100%;
+            padding: 0.875rem;
             border: 2px solid #e5e7eb;
             border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+            height: 48px;
+            line-height: 1.2;
+        }
+
+        /* Ensure all form controls have exact same dimensions */
+        input.form-control,
+        select.form-control {
+            height: 48px !important;
+            padding: 0.875rem !important;
+            box-sizing: border-box !important;
+            border: 2px solid #e5e7eb !important;
+            border-radius: 8px !important;
+            width: 100% !important;
+            font-size: 1rem !important;
+            line-height: 1.2 !important;
+            vertical-align: top;
+        }
+
+        textarea.form-control {
+            height: auto !important;
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        select.form-control {
+            padding-right: 2.5rem !important;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.75rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            background-color: white;
+        }
             font-size: 1rem;
             transition: border-color 0.3s ease;
         }

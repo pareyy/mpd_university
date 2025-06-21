@@ -234,21 +234,74 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
             margin-bottom: 2rem;
-        }
-
-        .form-row {
+        }        .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1rem;
             margin-bottom: 1rem;
+            align-items: end;
         }
 
         .form-group {
             display: flex;
             flex-direction: column;
+            width: 100%;
         }
 
         .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #374151;
+            font-size: 0.9rem;
+            text-align: left;
+            display: block;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.875rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+            height: 48px;
+            line-height: 1.2;
+        }
+
+        /* Ensure all form controls have exact same dimensions */
+        input.form-control,
+        select.form-control {
+            height: 48px !important;
+            padding: 0.875rem !important;
+            box-sizing: border-box !important;
+            border: 2px solid #e5e7eb !important;
+            border-radius: 8px !important;
+            width: 100% !important;
+            font-size: 1rem !important;
+            line-height: 1.2 !important;
+            vertical-align: top;
+        }
+
+        textarea.form-control {
+            height: auto !important;
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        select.form-control {
+            padding-right: 2.5rem !important;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.75rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            background-color: white;
+        }
             grid-column: 1 / -1;
         }
 

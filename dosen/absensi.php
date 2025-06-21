@@ -594,22 +594,49 @@ $attendance_history = [
             font-size: 0.75rem;
             font-weight: 600;
             color: #374151;
-        }        /* Mobile Responsive */
+        }        /* Ensure all form controls have exact same dimensions */
+        input.form-control,
+        select.form-control {
+            height: 48px !important;
+            padding: 0.875rem !important;
+            box-sizing: border-box !important;
+            border: 2px solid #e5e7eb !important;
+            border-radius: 8px !important;
+            width: 100% !important;
+            font-size: 1rem !important;
+            line-height: 1.2 !important;
+            vertical-align: top;
+        }
+
+        select.form-control {
+            padding-right: 2.5rem !important;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.75rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            background-color: white;
+        }
+
+        /* Mobile responsive */
         @media (max-width: 1024px) {
             .dashboard-container {
                 padding: 1rem;
-                margin: 0;
             }
             
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
+            .course-info {
+                flex-direction: column;
                 gap: 0.75rem;
             }
             
-            .attendance-container,
-            .history-container {
-                border-radius: 8px;
-                margin: 0 0.5rem;
+            .attendance-actions {
+                justify-content: stretch;
+            }
+            
+            .attendance-stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+                padding: 1rem;
             }
         }
 
@@ -621,18 +648,11 @@ $attendance_history = [
             
             .dashboard-header {
                 padding: 1rem;
-                text-align: center;
-                margin-bottom: 1rem;
+                margin-bottom: 1.5rem;
             }
             
             .dashboard-header h1 {
                 font-size: 1.5rem;
-                margin-bottom: 0.5rem;
-            }
-            
-            .dashboard-header p {
-                font-size: 0.85rem;
-                color: #6b7280;
             }
             
             .dashboard-section {
@@ -641,383 +661,202 @@ $attendance_history = [
             
             .dashboard-section h2 {
                 font-size: 1.25rem;
-                margin-bottom: 1rem;
-                padding: 0 0.5rem;
-            }            
-            .course-info {
-                flex-direction: column;
-                gap: 0.75rem;
                 padding: 0 0.5rem;
             }
-            
-            .course-info .form-control {
+
+            .attendance-container {
+                margin: 0 0.5rem 1.5rem 0.5rem;
+                border-radius: 8px;
+            }
+
+            .attendance-header {
+                padding: 1rem;
+            }
+
+            .course-info {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .form-control {
                 padding: 1rem;
                 font-size: 1rem;
                 border-radius: 10px;
+                height: 52px;
                 width: 100%;
                 box-sizing: border-box;
             }
-            
+
             .attendance-actions {
                 flex-direction: column;
-                margin-top: 1rem;
                 gap: 0.75rem;
-                padding: 0 0.5rem;
+                margin-top: 1rem;
             }
             
             .btn {
-                padding: 1rem 1.5rem;
+                padding: 1rem;
                 font-size: 1rem;
-                border-radius: 10px;
                 min-height: 48px;
-                touch-action: manipulation;
-                width: 100%;
-                display: flex;
-                align-items: center;
+                border-radius: 10px;
                 justify-content: center;
-                gap: 0.5rem;
-            }
-            
-            .attendance-header {
-                padding: 1rem 0.5rem;
+                touch-action: manipulation;
             }
             
             .attendance-stats {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 0.5rem;
-                padding: 1rem 0.5rem;
-            }
-            
-            .stat-item {
-                padding: 0.75rem;
-                background: white;
-                border-radius: 8px;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-                border: 1px solid #e5e7eb;
-            }
-            
-            .stat-label {
-                font-size: 0.75rem;
-                margin-bottom: 0.25rem;
-                display: block;
-            }
-            
-            .stat-value {
-                font-size: 1.1rem;
-                font-weight: 700;
-            }
-            
-            .students-list {
-                padding: 0.5rem;
-            }
-            
-            .student-item {
-                flex-direction: column;
-                gap: 0.75rem;
-                align-items: stretch;
-                padding: 1rem;
-                border-radius: 10px;
-                margin-bottom: 0.75rem;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            }
-            
-            .student-info {
-                justify-content: flex-start;
-                text-align: left;
-                gap: 0.75rem;
-            }
-            
-            .student-avatar {
-                width: 45px;
-                height: 45px;
-                font-size: 1.1rem;
-                flex-shrink: 0;
-            }
-            
-            .student-details h4 {
-                font-size: 1rem;
-                margin-bottom: 0.25rem;
-            }
-            
-            .student-details p {
-                font-size: 0.85rem;
-            }
-            
-            .attendance-controls {
-                display: grid;
                 grid-template-columns: 1fr;
                 gap: 0.5rem;
+                padding: 1rem;
+            }
+            
+            .student-card {
+                padding: 1rem;
+                margin-bottom: 0.75rem;
+            }
+            
+            .student-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+            
+            .attendance-options {
                 width: 100%;
+                justify-content: stretch;
+                gap: 0.5rem;
             }
             
-            .option-label {
-                justify-content: center;
-                padding: 0.875rem;
+            .option-btn {
+                flex: 1;
+                padding: 0.75rem;
                 font-size: 0.9rem;
-                border-radius: 8px;
                 min-height: 44px;
-                touch-action: manipulation;
-                display: flex;
-                align-items: center;
-                transition: all 0.2s ease;
-            }
-            
-            .option-label i {
-                font-size: 1rem;
-                margin-right: 0.5rem;
             }
             
             .history-container {
-                margin: 0 -0.5rem;
-                border-radius: 0;
+                margin: 0 0.5rem;
+                border-radius: 8px;
             }
             
             .table-responsive {
-                overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
-                margin: 0;
             }
-            
+
             .history-table {
-                min-width: 700px;
                 font-size: 0.85rem;
+                min-width: 700px;
             }
-            
+
             .history-table th,
             .history-table td {
                 padding: 0.75rem 0.5rem;
                 white-space: nowrap;
             }
             
-            .percentage-bar {
-                width: 80px;
-                height: 16px;
-            }
-            
-            .percentage-text {
-                font-size: 0.7rem;
-            }
-            
-            .count-badge {
-                padding: 0.25rem 0.5rem;
-                font-size: 0.75rem;
-            }
-            
             .btn-sm {
-                padding: 0.625rem 0.875rem;
-                font-size: 0.8rem;
-                min-height: 36px;
-            }
-            
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 0.5rem;
-            }
-            
-            .stat-card {
-                padding: 0.875rem;
-                border-radius: 8px;
-            }
-            
-            .stat-card .stat-icon {
-                width: 35px;
-                height: 35px;
-                font-size: 1rem;
-                margin-bottom: 0.5rem;
-            }
-            
-            .stat-card h3 {
+                padding: 0.75rem 1rem;
                 font-size: 0.85rem;
-                margin-bottom: 0.5rem;
-                line-height: 1.2;
+                min-height: 40px;
+                width: 100%;
+                justify-content: center;
             }
-            
-            .stat-card .stat-number {
-                font-size: 1.25rem;
-                margin-bottom: 0.25rem;
-            }
-            
-            .stat-card small {
-                font-size: 0.7rem;
-                line-height: 1.2;
-            }
-        }        @media (max-width: 480px) {
+        }
+
+        @media (max-width: 480px) {
             .dashboard-container {
-                padding: 0.5rem 0.25rem;
+                padding: 0.25rem;
             }
             
             .dashboard-header {
-                padding: 0.75rem 0.5rem;
+                padding: 0.75rem;
+                margin-bottom: 1rem;
             }
             
             .dashboard-header h1 {
                 font-size: 1.25rem;
             }
             
-            .dashboard-header p {
-                font-size: 0.8rem;
+            .dashboard-section h2 {
+                font-size: 1.1rem;
+                padding: 0 0.25rem;
             }
-            
-            .attendance-stats {
-                grid-template-columns: 1fr;
-                gap: 0.5rem;
-                padding: 0.75rem 0.5rem;
+
+            .attendance-container {
+                margin: 0 0.25rem 1rem 0.25rem;
             }
-            
-            .stat-item {
-                padding: 0.875rem;
-            }
-            
-            .student-item {
-                padding: 0.875rem;
-                margin-bottom: 0.5rem;
-            }
-            
-            .student-avatar {
-                width: 40px;
-                height: 40px;
-                font-size: 1rem;
-            }
-            
-            .student-details h4 {
-                font-size: 0.9rem;
-            }
-            
-            .student-details p {
-                font-size: 0.8rem;
-            }
-            
-            .attendance-controls {
-                gap: 0.375rem;
-            }
-            
-            .option-label {
+
+            .attendance-header {
                 padding: 0.75rem;
-                font-size: 0.85rem;
+            }
+
+            .form-control {
+                padding: 0.875rem;
+                height: 48px;
             }
             
             .btn {
-                padding: 0.75rem 1rem;
+                padding: 0.875rem;
                 font-size: 0.9rem;
             }
             
-            .btn-sm {
-                padding: 0.5rem 0.75rem;
-                font-size: 0.75rem;
-                min-height: 32px;
-            }
-            
-            .stats-grid {
-                grid-template-columns: 1fr;
-                gap: 0.5rem;
-            }
-            
-            .stat-card {
+            .attendance-stats {
                 padding: 0.75rem;
             }
             
-            .stat-card .stat-icon {
-                width: 30px;
-                height: 30px;
-                font-size: 0.9rem;
-                margin-bottom: 0.375rem;
+            .student-card {
+                padding: 0.75rem;
             }
             
-            .stat-card h3 {
+            .history-container {
+                margin: 0 0.25rem;
+            }
+
+            .history-table {
                 font-size: 0.8rem;
-                margin-bottom: 0.375rem;
-            }
-            
-            .stat-card .stat-number {
-                font-size: 1.1rem;
-                margin-bottom: 0.25rem;
-            }
-            
-            .stat-card small {
-                font-size: 0.65rem;
+                min-width: 650px;
             }
             
             .history-table th,
             .history-table td {
-                padding: 0.5rem 0.25rem;
-                font-size: 0.75rem;
+                padding: 0.625rem 0.375rem;
             }
             
-            .percentage-bar {
-                width: 40px;
-                height: 12px;
-            }
-            
-            .count-badge {
-                padding: 0.15rem 0.3rem;
-                font-size: 0.7rem;
-            }
-        }
-
-        @media (max-width: 360px) {
-            .dashboard-header h1 {
-                font-size: 1.25rem;
-            }
-            
-            .student-details h4 {
-                font-size: 1rem;
-            }
-            
-            .student-details p {
-                font-size: 0.85rem;
-            }
-            
-            .option-label {
-                padding: 0.75rem;
-                font-size: 0.85rem;
-            }
-            
-            .btn {
-                padding: 0.75rem 1rem;
-                font-size: 0.85rem;
-            }
-            
-            .history-table {
-                min-width: 700px;
-            }
-        }
-
-        /* Landscape orientation adjustments */
-        @media (max-width: 768px) and (orientation: landscape) {
-            .attendance-stats {
-                grid-template-columns: repeat(4, 1fr);
-                gap: 0.5rem;
-            }
-            
-            .student-item {
-                flex-direction: row;
-                align-items: center;
-            }
-            
-            .attendance-controls {
-                flex-direction: row;
-                gap: 0.5rem;
-                flex-wrap: wrap;
-            }
-            
-            .option-label {
-                padding: 0.5rem 0.75rem;
+            .btn-sm {
+                padding: 0.625rem 0.75rem;
                 font-size: 0.8rem;
+                min-height: 36px;
+            }
+        }
+
+        /* Landscape orientation */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .course-info {
+                flex-direction: row;
+                gap: 0.75rem;
+            }
+            
+            .attendance-actions {
+                flex-direction: row;
+                gap: 1rem;
+            }
+            
+            .attendance-stats {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
 
         /* Touch improvements */
         @media (hover: none) and (pointer: coarse) {
-            .student-item:hover {
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            .student-card:hover {
+                transform: none;
             }
             
-            .option-label:active {
+            .student-card:active {
                 transform: scale(0.98);
             }
             
-            .btn:active {
-                transform: scale(0.98);
+            .form-control:focus {
+                border-color: #667eea;
+                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
             }
         }
     </style>

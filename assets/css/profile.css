@@ -1,0 +1,248 @@
+.school-logo {
+    max-width: 150px;
+    height: auto;
+    margin: 0 auto;
+}
+.mt-3 {
+    margin-top: 1rem;
+}
+.mt-4 {
+    margin-top: 1.5rem;
+}
+.mt-5 {
+    margin-top: 2rem;
+}
+.mb-4 {
+    margin-bottom: 1.5rem;
+}
+.pt-4 {
+    padding-top: 1.5rem;
+}
+.py-5 {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+.border-top {
+    border-top: 1px solid #e5e7eb;
+}
+
+/* Faculty Cards Styles */
+.faculty-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+@media (min-width: 768px) {
+    .faculty-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .faculty-container {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.faculty-card {
+    flex: 0 0 auto;
+    width: calc(33.333% - 20px);
+    background-color: #f8fafc;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    margin-right: 20px;
+}
+
+.faculty-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.faculty-image {
+    height: 200px;
+    overflow: hidden;
+}
+
+.faculty-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.faculty-card:hover .faculty-image img {
+    transform: scale(1.05);
+}
+
+.faculty-info {
+    padding: 1.25rem;
+}
+
+.faculty-info h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--primary);
+    font-size: 1.125rem;
+}
+
+.faculty-title {
+    color: #333;
+    font-weight: 500;
+    margin: 0 0 0.25rem 0;
+}
+
+.faculty-specialty {
+    color: #666;
+    font-size: 0.875rem;
+    margin: 0 0 0.75rem 0;
+    font-style: italic;
+}
+
+.faculty-description {
+    color: #555;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Faculty Cards Slider Styles */
+.faculty-slider-container {
+    position: relative;
+    width: 100%;
+    margin: 2rem auto;
+    overflow: hidden;
+    padding: 1rem 0;
+}
+
+.faculty-slider-track {
+    display: flex;
+    transition: transform 0.5s ease;
+    gap: 20px;
+    padding: 0.5rem 0;
+}
+
+.faculty-card {
+    flex: 0 0 auto;
+    width: calc(33.333% - 20px);
+    background-color: #f8fafc;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    margin-right: 20px;
+}
+
+.faculty-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.faculty-image {
+    height: 200px;
+    overflow: hidden;
+}
+
+.faculty-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.faculty-card:hover .faculty-image img {
+    transform: scale(1.05);
+}
+
+.faculty-info {
+    padding: 1.25rem;
+}
+
+.faculty-info h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--primary);
+    font-size: 1.125rem;
+}
+
+.faculty-title {
+    color: #333;
+    font-weight: 500;
+    margin: 0 0 0.25rem 0;
+}
+
+.faculty-specialty {
+    color: #666;
+    font-size: 0.875rem;
+    margin: 0 0 0.75rem 0;
+    font-style: italic;
+}
+
+.faculty-description {
+    color: #555;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.faculty-slider-navigation {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 1.5rem;
+    gap: 1rem;
+}
+
+.slider-button {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.slider-button:hover:not(:disabled) {
+    background-color: #1e40af;
+}
+
+.slider-button:disabled {
+    background-color: #93c5fd;
+    cursor: not-allowed;
+}
+
+.slider-dots {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.slider-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #cbd5e1;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.slider-dot.active {
+    background-color: var(--primary);
+}
+
+@media (max-width: 1024px) {
+    .faculty-card {
+        width: calc(50% - 20px);
+    }
+}
+
+@media (max-width: 768px) {
+    .faculty-card {
+        width: calc(100% - 20px);
+    }
+}

@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Avatar Illustration Style - MPD University</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #2d3748;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .style-info {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 40px;
+            border-left: 5px solid #667eea;
+        }
+
+        .style-info h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .style-info p {
+            color: #4a5568;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .feature {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid #e2e8f0;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .feature h3 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+
+        .feature p {
+            color: #666;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .avatars-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .avatar-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .avatar-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            border-color: #667eea;
+        }
+
+        .avatar-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .avatar-card:hover::before {
+            opacity: 1;
+        }
+
+        .avatar-image {
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            margin: 0 auto 15px;
+            display: block;
+            border: 4px solid #f1f5f9;
+            transition: all 0.3s ease;
+        }
+
+        .avatar-card:hover .avatar-image {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+
+        .avatar-title {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+
+        .avatar-description {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .character-features {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .character-features h3 {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 1.5rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-item {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .feature-item h4 {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .feature-item p {
+            font-size: 0.95rem;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+
+        .color-palette {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .color-palette h3 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 1.5rem;
+        }
+
+        .colors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+        }
+
+        .color-item {
+            text-align: center;
+        }
+
+        .color-swatch {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            border: 3px solid white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .color-name {
+            font-size: 0.85rem;
+            color: #4a5568;
+            font-weight: 500;
+        }
+
+        .implementation-note {
+            background: #e6fffa;
+            border: 1px solid #81e6d9;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .implementation-note h4 {
+            color: #234e52;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+
+        .implementation-note p {
+            color: #2d3748;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .implementation-note code {
+            background: #234e52;
+            color: #81e6d9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .avatars-grid {
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 15px;
+            }
+
+            .avatar-card {
+                padding: 15px;
+            }
+
+            .avatar-image {
+                width: 110px;
+                height: 110px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Avatar Illustration Style</h1>
+            <p>Koleksi avatar karakter manusia dengan gaya ilustrasi yang ekspresif dan menarik untuk sistem akademik MPD University. Desain yang professional dengan sentuhan personal yang humanis.</p>
+        </div>
+
+        <div class="style-info">
+            <h3>🎨 Tentang Style Adventurer</h3>
+            <p>Avatar ini menggunakan <strong>DiceBear Adventurer Style</strong> yang memberikan representasi karakter manusia dengan detail yang lebih kaya dibanding style minimalis. Setiap avatar memiliki karakteristik unik dalam hal rambut, warna, dan ekspresi wajah.</p>
+            <p>Style ini sangat cocok untuk environment akademik karena memberikan kesan personal dan humanis sambil tetap mempertahankan profesionalisme.</p>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <h3>🎭 Expressive Characters</h3>
+                <p>Karakter dengan detail facial features yang ekspresif dan gaya rambut yang beragam</p>
+            </div>
+            <div class="feature">
+                <h3>🌈 Rich Color Palette</h3>
+                <p>Background colors yang vibrant namun tetap eye-friendly untuk penggunaan jangka panjang</p>
+            </div>
+            <div class="feature">
+                <h3>👥 Diverse Representation</h3>
+                <p>Variasi karakter yang mewakili keberagaman dalam lingkungan akademik</p>
+            </div>
+            <div class="feature">
+                <h3>⚡ Performance Optimized</h3>
+                <p>Format SVG yang scalable dan fast-loading untuk semua device</p>
+            </div>
+        </div>
+
+        <div class="color-palette">
+            <h3>🎨 Color Palette Background</h3>
+            <div class="colors-grid">
+                <div class="color-item">
+                    <div class="color-swatch" style="background-color: #ffc1cc;"></div>
+                    <div class="color-name">Pink Coral</div>
+                </div>
+                <div class="color-item">
+                    <div class="color-swatch" style="background-color: #a8e6cf;"></div>
+                    <div class="color-name">Mint Green</div>
+                </div>
+                <div class="color-item">
+                    <div class="color-swatch" style="background-color: #ffd3a5;"></div>
+                    <div class="color-name">Peach Orange</div>
+                </div>
+                <div class="color-item">
+                    <div class="color-swatch" style="background-color: #c7ceea;"></div>
+                    <div class="color-name">Lavender Blue</div>
+                </div>
+                <div class="color-item">
+                    <div class="color-swatch" style="background-color: #ffaaa5;"></div>
+                    <div class="color-name">Salmon Pink</div>
+                </div>
+                <div class="color-item">
+                    <div class="color-swatch" style="background-color: #b4e7ce;"></div>
+                    <div class="color-name">Sea Green</div>
+                </div>
+                <div class="color-item">
+                    <div class="color-swatch" style="background-color: #f9ca24;"></div>
+                    <div class="color-name">Golden Yellow</div>
+                </div>
+                <div class="color-item">
+                    <div class="color-swatch" style="background-color: #a29bfe;"></div>
+                    <div class="color-name">Periwinkle</div>
+                </div>
+                <div class="color-item">
+                    <div class="color-swatch" style="background-color: #fd79a8;"></div>
+                    <div class="color-name">Rose Pink</div>
+                </div>
+                <div class="color-item">
+                    <div class="color-swatch" style="background-color: #81ecec;"></div>
+                    <div class="color-name">Turquoise</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="avatars-grid">
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=character1&size=130&backgroundColor=ffc1cc&hair=short01,short02,short03&hairColor=724133,d2691e,8b4513" alt="Avatar 1" class="avatar-image">
+                <div class="avatar-title">Character 1</div>
+                <div class="avatar-description">Short hair style dengan pink coral background, natural brown hair color</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=character2&size=130&backgroundColor=a8e6cf&hair=short04,short05,short06&hairColor=2c1b18,654321,3c2415" alt="Avatar 2" class="avatar-image">
+                <div class="avatar-title">Character 2</div>
+                <div class="avatar-description">Professional look dengan mint green background, dark hair variations</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=character3&size=130&backgroundColor=ffd3a5&hair=short07,short08,short09&hairColor=daa520,d2691e,cd853f" alt="Avatar 3" class="avatar-image">
+                <div class="avatar-title">Character 3</div>
+                <div class="avatar-description">Warm peach background dengan golden brown hair tones</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=character4&size=130&backgroundColor=c7ceea&hair=short10,short11,short12&hairColor=2c1b18,8b4513,654321" alt="Avatar 4" class="avatar-image">
+                <div class="avatar-title">Character 4</div>
+                <div class="avatar-description">Soft lavender blue background dengan rich dark hair colors</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=character5&size=130&backgroundColor=ffaaa5&hair=short13,short14,short15&hairColor=724133,d2691e,a0522d" alt="Avatar 5" class="avatar-image">
+                <div class="avatar-title">Character 5</div>
+                <div class="avatar-description">Salmon pink background dengan warm brown hair variations</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=character6&size=130&backgroundColor=b4e7ce&hair=short16,short17,short18&hairColor=3c2415,654321,8b4513" alt="Avatar 6" class="avatar-image">
+                <div class="avatar-title">Character 6</div>
+                <div class="avatar-description">Fresh sea green background dengan natural hair tones</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=character7&size=130&backgroundColor=f9ca24&hair=short19,short20,long01&hairColor=daa520,cd853f,d2691e" alt="Avatar 7" class="avatar-image">
+                <div class="avatar-title">Character 7</div>
+                <div class="avatar-description">Vibrant golden yellow background dengan longer hair styles</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=character8&size=130&backgroundColor=a29bfe&hair=long02,long03,long04&hairColor=2c1b18,724133,654321" alt="Avatar 8" class="avatar-image">
+                <div class="avatar-title">Character 8</div>
+                <div class="avatar-description">Elegant periwinkle background dengan flowing long hair</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=character9&size=130&backgroundColor=fd79a8&hair=long05,long06,long07&hairColor=8b4513,a0522d,d2691e" alt="Avatar 9" class="avatar-image">
+                <div class="avatar-title">Character 9</div>
+                <div class="avatar-description">Beautiful rose pink background dengan textured long hair</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=character10&size=130&backgroundColor=81ecec&hair=long08,long09,long10&hairColor=3c2415,724133,654321" alt="Avatar 10" class="avatar-image">
+                <div class="avatar-title">Character 10</div>
+                <div class="avatar-description">Cool turquoise background dengan sophisticated long hair styles</div>
+            </div>
+        </div>
+
+        <div class="character-features">
+            <h3>✨ Keunggulan Avatar Illustration Style</h3>
+            <div class="features-grid">
+                <div class="feature-item">
+                    <span class="feature-icon">🎭</span>
+                    <h4>Rich Character Detail</h4>
+                    <p>Setiap avatar memiliki detail karakter yang unik dengan variasi rambut, warna, dan ekspresi yang beragam</p>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🎨</span>
+                    <h4>Vibrant Colors</h4>
+                    <p>Palette warna yang cerah namun tetap professional untuk lingkungan akademik yang modern</p>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">👁️</span>
+                    <h4>Visual Appeal</h4>
+                    <p>Desain yang eye-catching namun tidak mengganggu, cocok untuk penggunaan jangka panjang</p>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🚀</span>
+                    <h4>Scalable Performance</h4>
+                    <p>Format SVG yang dapat digunakan dalam berbagai ukuran tanpa kehilangan kualitas</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="implementation-note">
+            <h4>🔧 Implementasi Teknis</h4>
+            <p>Avatar illustration style ini menggunakan DiceBear API v7.x dengan <code>adventurer</code> style yang memberikan karakter manusia dengan detail yang lebih kaya.</p>
+            <p>
+                <strong>Parameter yang digunakan:</strong><br>
+                - <code>seed</code>: Unique character identifier<br>
+                - <code>size</code>: 150px untuk optimal display<br>
+                - <code>backgroundColor</code>: 10 vibrant color variations<br>
+                - <code>hair</code>: Multiple hair style options<br>
+                - <code>hairColor</code>: Natural hair color palette
+            </p>
+            <p>Style ini memberikan balance sempurna antara detail visual yang menarik dengan performa yang optimal untuk sistem akademik MPD University.</p>
+        </div>
+    </div>
+</body>
+</html>

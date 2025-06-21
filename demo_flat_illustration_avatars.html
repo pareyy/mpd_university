@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Avatar Flat Illustration - MPD University</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #2d3748;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .reference-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+            background: #f8fafc;
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .reference-side {
+            text-align: center;
+        }
+
+        .reference-side h3 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+        }
+
+        .reference-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .reference-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid #e2e8f0;
+            transition: transform 0.2s ease;
+        }
+
+        .reference-avatar:hover {
+            transform: scale(1.1);
+        }
+
+        .style-info {
+            background: #f0f9ff;
+            border-left: 5px solid #0ea5e9;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 40px;
+        }
+
+        .style-info h3 {
+            color: #0c4a6e;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .style-info p {
+            color: #164e63;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .feature {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid #e2e8f0;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .feature:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+
+        .feature h3 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+
+        .feature p {
+            color: #666;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .avatars-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .avatar-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .avatar-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            border-color: #667eea;
+        }
+
+        .avatar-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .avatar-card:hover::before {
+            opacity: 1;
+        }
+
+        .avatar-image {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            margin: 0 auto 15px;
+            display: block;
+            border: 4px solid #f1f5f9;
+            transition: all 0.3s ease;
+        }
+
+        .avatar-card:hover .avatar-image {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+
+        .avatar-title {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+
+        .avatar-description {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .color-palette {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .color-palette h3 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 1.5rem;
+        }
+
+        .colors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+        }
+
+        .color-item {
+            text-align: center;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .color-swatch {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            margin: 0 auto 10px;
+            border: 2px solid white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .color-name {
+            font-size: 0.9rem;
+            color: #4a5568;
+            font-weight: 600;
+        }
+
+        .color-code {
+            font-size: 0.8rem;
+            color: #718096;
+            font-family: monospace;
+        }
+
+        .implementation-note {
+            background: #e6fffa;
+            border: 1px solid #81e6d9;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .implementation-note h4 {
+            color: #234e52;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+
+        .implementation-note p {
+            color: #2d3748;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .implementation-note code {
+            background: #234e52;
+            color: #81e6d9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .reference-comparison {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .avatars-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .avatar-card {
+                padding: 15px;
+            }
+
+            .avatar-image {
+                width: 120px;
+                height: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Avatar Flat Illustration Style</h1>
+            <p>Avatar dengan gaya flat illustration yang persis seperti referensi 9 karakter yang diberikan. Desain modern, clean, dan professional untuk sistem akademik MPD University.</p>
+        </div>
+
+        <div class="reference-comparison">
+            <div class="reference-side">
+                <h3>🎯 Style Reference (9 Characters)</h3>
+                <p>Style yang diinginkan dengan karakteristik flat illustration, outline yang jelas, dan color palette yang konsisten.</p>
+            </div>
+            <div class="reference-side">
+                <h3>✨ Our Implementation</h3>
+                <p>Menggunakan DiceBear Open Peeps style yang memberikan hasil sangat mirip dengan referensi yang diberikan.</p>
+            </div>
+        </div>
+
+        <div class="style-info">
+            <h3>🎨 Tentang Open Peeps Style</h3>
+            <p>Avatar ini menggunakan <strong>DiceBear Open Peeps Style</strong> yang dirancang khusus untuk memberikan representasi karakter manusia dengan gaya flat illustration yang modern dan inclusive.</p>
+            <p>Style ini sangat cocok dengan referensi 9 karakter yang Anda berikan, dengan karakteristik outline yang jelas, warna yang konsisten, dan variasi pakaian yang beragam.</p>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <h3>🎭 Flat Design</h3>
+                <p>Gaya flat illustration dengan outline yang bersih dan konsisten seperti referensi</p>
+            </div>
+            <div class="feature">
+                <h3>👕 Clothing Variety</h3>
+                <p>Beragam style pakaian: cardigan, hoodie, blazer, dress, striped shirt</p>
+            </div>
+            <div class="feature">
+                <h3>🎨 Consistent Colors</h3>
+                <p>Palette warna yang konsisten: coral red, navy, teal, dan yellow</p>
+            </div>
+            <div class="feature">
+                <h3>👥 Diverse Characters</h3>
+                <p>Representasi karakter yang beragam sesuai dengan referensi yang diberikan</p>
+            </div>
+        </div>
+
+        <div class="color-palette">
+            <h3>🎨 Color Palette (Exact Match)</h3>
+            <div class="colors-grid">
+                <div class="color-item">
+                    <div class="color-swatch" style="background-color: #ff6b6b;"></div>
+                    <div class="color-name">Coral Red</div>
+                    <div class="color-code">#ff6b6b</div>
+                </div>
+                <div class="color-item">
+                    <div class="color-swatch" style="background-color: #4ecdc4;"></div>
+                    <div class="color-name">Teal</div>
+                    <div class="color-code">#4ecdc4</div>
+                </div>
+                <div class="color-item">
+                    <div class="color-swatch" style="background-color: #ffe66d;"></div>
+                    <div class="color-name">Yellow</div>
+                    <div class="color-code">#ffe66d</div>
+                </div>
+                <div class="color-item">
+                    <div class="color-swatch" style="background-color: #2c3e50;"></div>
+                    <div class="color-name">Navy Blue</div>
+                    <div class="color-code">#2c3e50</div>
+                </div>
+                <div class="color-item">
+                    <div class="color-swatch" style="background-color: #f8f9fa;"></div>
+                    <div class="color-name">Light Gray</div>
+                    <div class="color-code">#f8f9fa</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="avatars-grid">
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/open-peeps/svg?seed=character1&size=140&backgroundColor=f8f9fa&clothing=cardigan,blazer,dress&clothingColor=ff6b6b,4ecdc4,ffe66d" alt="Avatar 1" class="avatar-image">
+                <div class="avatar-title">Character 1</div>
+                <div class="avatar-description">Professional dengan cardigan/blazer, coral dan teal colors</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/open-peeps/svg?seed=character2&size=140&backgroundColor=f8f9fa&clothing=hoodie,shirt,cardigan&clothingColor=ff6b6b,2c3e50,4ecdc4" alt="Avatar 2" class="avatar-image">
+                <div class="avatar-title">Character 2</div>
+                <div class="avatar-description">Casual dengan hoodie/shirt, coral dan navy combination</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/open-peeps/svg?seed=character3&size=140&backgroundColor=f8f9fa&clothing=stripedShirt,hoodie,cardigan&clothingColor=2c3e50,ff6b6b,ffe66d" alt="Avatar 3" class="avatar-image">
+                <div class="avatar-title">Character 3</div>
+                <div class="avatar-description">Striped shirt style dengan navy, coral, dan yellow</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/open-peeps/svg?seed=character4&size=140&backgroundColor=f8f9fa&clothing=dress,blouse,cardigan&clothingColor=ff6b6b,4ecdc4,2c3e50" alt="Avatar 4" class="avatar-image">
+                <div class="avatar-title">Character 4</div>
+                <div class="Avatar-description">Feminine dengan dress/blouse, coral dan teal accents</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/open-peeps/svg?seed=character5&size=140&backgroundColor=f8f9fa&clothing=hoodie,shirt,blazer&clothingColor=ffe66d,ff6b6b,4ecdc4" alt="Avatar 5" class="avatar-image">
+                <div class="avatar-title">Character 5</div>
+                <div class="avatar-description">Sporty casual dengan yellow, coral, dan teal</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/open-peeps/svg?seed=character6&size=140&backgroundColor=f8f9fa&clothing=dress,cardigan,blouse&clothingColor=ff6b6b,2c3e50,4ecdc4" alt="Avatar 6" class="avatar-image">
+                <div class="Avatar-title">Character 6</div>
+                <div class="avatar-description">Elegant dengan dress/cardigan, coral dan navy tones</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/open-peeps/svg?seed=character7&size=140&backgroundColor=f8f9fa&clothing=hoodie,cardigan,shirt&clothingColor=ff6b6b,ffe66d,2c3e50" alt="Avatar 7" class="avatar-image">
+                <div class="avatar-title">Character 7</div>
+                <div class="avatar-description">Relaxed style dengan coral, yellow, dan navy</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/open-peeps/svg?seed=character8&size=140&backgroundColor=f8f9fa&clothing=blazer,dress,cardigan&clothingColor=2c3e50,ff6b6b,4ecdc4" alt="Avatar 8" class="avatar-image">
+                <div class="avatar-title">Character 8</div>
+                <div class="avatar-description">Business formal dengan blazer, navy dan coral</div>
+            </div>
+
+            <div class="avatar-card">
+                <img src="https://api.dicebear.com/7.x/open-peeps/svg?seed=character9&size=140&backgroundColor=f8f9fa&clothing=hoodie,shirt,cardigan&clothingColor=ffe66d,ff6b6b,2c3e50" alt="Avatar 9" class="avatar-image">
+                <div class="avatar-title">Character 9</div>
+                <div class="avatar-description">Modern casual dengan yellow, coral, navy palette</div>
+            </div>
+        </div>
+
+        <div class="implementation-note">
+            <h4>🔧 Implementasi Teknis</h4>
+            <p>Avatar flat illustration ini menggunakan DiceBear API v7.x dengan <code>open-peeps</code> style yang memberikan hasil yang sangat mirip dengan referensi 9 karakter yang Anda berikan.</p>
+            <p>
+                <strong>Parameter yang digunakan:</strong><br>
+                - <code>style</code>: open-peeps (flat illustration style)<br>
+                - <code>seed</code>: character1-9 (unique identifiers)<br>
+                - <code>size</code>: 150px untuk optimal display<br>
+                - <code>backgroundColor</code>: #f8f9fa (consistent light background)<br>
+                - <code>clothing</code>: Multiple options (cardigan, hoodie, blazer, dress, etc.)<br>
+                - <code>clothingColor</code>: Exact color match (#ff6b6b, #4ecdc4, #ffe66d, #2c3e50)
+            </p>
+            <p>Style ini memberikan representasi yang persis seperti referensi dengan flat design yang modern dan professional untuk sistem akademik MPD University.</p>
+        </div>
+    </div>
+</body>
+</html>

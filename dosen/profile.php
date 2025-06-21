@@ -11,6 +11,41 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'dosen') {
 // Include database connection
 require_once '../koneksi.php';
 
+// Function to get avatar URL
+function getAvatarUrl($photo_name) {
+    // Define available 3D cartoon avatars matching the exact reference image characters
+    $vector_avatars = [
+        'avatar-1.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character1&size=150&backgroundColor=4a90a4&mood=happy',
+        'avatar-2.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character2&size=150&backgroundColor=e74c3c&mood=happy',
+        'avatar-3.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character3&size=150&backgroundColor=3498db&mood=happy',
+        'avatar-4.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character4&size=150&backgroundColor=f39c12&mood=happy',
+        'avatar-5.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character5&size=150&backgroundColor=9b59b6&mood=happy',
+        'avatar-6.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character6&size=150&backgroundColor=1abc9c&mood=happy',
+        'avatar-7.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character7&size=150&backgroundColor=e67e22&mood=happy',
+        'avatar-8.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character8&size=150&backgroundColor=34495e&mood=happy',
+        'avatar-9.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character9&size=150&backgroundColor=e91e63&mood=happy',
+        'avatar-10.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character10&size=150&backgroundColor=ff6b6b&mood=happy',
+        'avatar-11.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character11&size=150&backgroundColor=4ecdc4&mood=happy',
+        'avatar-12.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character12&size=150&backgroundColor=ffe66d&mood=happy',
+        'avatar-13.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character13&size=150&backgroundColor=6c5ce7&mood=happy',
+        'avatar-14.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character14&size=150&backgroundColor=a55eea&mood=happy',
+        'avatar-15.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character15&size=150&backgroundColor=26de81&mood=happy',
+        'avatar-16.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character16&size=150&backgroundColor=2bcbba&mood=happy',
+        'avatar-17.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character17&size=150&backgroundColor=fd79a8&mood=happy',
+        'avatar-18.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character18&size=150&backgroundColor=fdcb6e&mood=happy',
+        'avatar-19.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character19&size=150&backgroundColor=e17055&mood=happy',
+        'avatar-20.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character20&size=150&backgroundColor=81ecec&mood=happy',
+        'avatar-21.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character21&size=150&backgroundColor=74b9ff&mood=happy',
+        'avatar-22.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character22&size=150&backgroundColor=fd79a8&mood=happy',
+        'avatar-23.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character23&size=150&backgroundColor=00b894&mood=happy',
+        'avatar-24.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character24&size=150&backgroundColor=e84393&mood=happy',
+        'avatar-25.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character25&size=150&backgroundColor=00cec9&mood=happy'
+    ];
+    
+    // Return vector avatar URL if available, otherwise return default
+    return isset($vector_avatars[$photo_name]) ? $vector_avatars[$photo_name] : $vector_avatars['avatar-1.svg'];
+}
+
 // Get dosen information
 $user_id = $_SESSION['user_id'];
 $query = "SELECT * FROM users WHERE id = '$user_id'";
@@ -46,8 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $error_message = "Error: " . mysqli_error($conn);
             }
         }
-        
-        if ($_POST['action'] == 'change_password') {
+          if ($_POST['action'] == 'change_password') {
             $current_password = $_POST['current_password'];
             $new_password = $_POST['new_password'];
             $confirm_password = $_POST['confirm_password'];
@@ -68,6 +102,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             } else {
                 $error_message = "Password saat ini salah!";
+            }
+        }
+        
+        if ($_POST['action'] == 'update_photo') {
+            $selected_photo = mysqli_real_escape_string($conn, $_POST['selected_photo']);
+            
+            $update_query = "UPDATE users SET profile_photo = '$selected_photo' WHERE id = '$user_id'";
+            
+            if (mysqli_query($conn, $update_query)) {
+                $success_message = "Foto profil berhasil diperbarui!";
+                // Refresh user data
+                $result = mysqli_query($conn, $query);
+                $user = mysqli_fetch_assoc($result);
+            } else {
+                $error_message = "Error: " . mysqli_error($conn);
             }
         }
     }
@@ -110,10 +159,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <div class="profile-layout">
                 <!-- Profile Sidebar -->
                 <div class="profile-sidebar">
-                    <div class="profile-card">
-                        <div class="profile-avatar">
-                            <img src="../assets/img/blank.jpg" alt="Profile Picture" id="profileImage">
-                            <button class="change-photo-btn" onclick="changePhoto()">
+                    <div class="profile-card">                        <div class="profile-avatar">
+                            <img src="<?php echo getAvatarUrl($user['profile_photo'] ?? 'avatar-1.svg'); ?>" alt="Profile Picture" id="profileImage">
+                            <button class="change-photo-btn" onclick="openPhotoModal()">
                                 <i class="fas fa-camera"></i>
                             </button>
                         </div>
@@ -892,8 +940,323 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             .form-control:focus {
                 border-color: #667eea;
                 box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+            }        }
+    </style>
+
+    <!-- Photo Selection Modal -->
+    <div id="photoModal" class="photo-modal">
+        <div class="photo-modal-content">
+            <div class="photo-modal-header">
+                <h3>Pilih Foto Profil</h3>
+                <button class="close-modal" onclick="closePhotoModal()">&times;</button>
+            </div>            <div class="photo-grid">                <?php                $vector_avatars = [
+                    'avatar-1.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character1&size=150&backgroundColor=4a90a4&mood=happy',
+                    'avatar-2.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character2&size=150&backgroundColor=e74c3c&mood=happy',
+                    'avatar-3.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character3&size=150&backgroundColor=3498db&mood=happy',
+                    'avatar-4.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character4&size=150&backgroundColor=f39c12&mood=happy',
+                    'avatar-5.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character5&size=150&backgroundColor=9b59b6&mood=happy',
+                    'avatar-6.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character6&size=150&backgroundColor=1abc9c&mood=happy',
+                    'avatar-7.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character7&size=150&backgroundColor=e67e22&mood=happy',
+                    'avatar-8.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character8&size=150&backgroundColor=34495e&mood=happy',
+                    'avatar-9.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character9&size=150&backgroundColor=e91e63&mood=happy',
+                    'avatar-10.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character10&size=150&backgroundColor=ff6b6b&mood=happy',
+                    'avatar-11.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character11&size=150&backgroundColor=4ecdc4&mood=happy',
+                    'avatar-12.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character12&size=150&backgroundColor=ffe66d&mood=happy',
+                    'avatar-13.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character13&size=150&backgroundColor=6c5ce7&mood=happy',
+                    'avatar-14.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character14&size=150&backgroundColor=a55eea&mood=happy',
+                    'avatar-15.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character15&size=150&backgroundColor=26de81&mood=happy',
+                    'avatar-16.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character16&size=150&backgroundColor=2bcbba&mood=happy',
+                    'avatar-17.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character17&size=150&backgroundColor=fd79a8&mood=happy',
+                    'avatar-18.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character18&size=150&backgroundColor=fdcb6e&mood=happy',
+                    'avatar-19.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character19&size=150&backgroundColor=e17055&mood=happy',
+                    'avatar-20.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character20&size=150&backgroundColor=81ecec&mood=happy',
+                    'avatar-21.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character21&size=150&backgroundColor=74b9ff&mood=happy',
+                    'avatar-22.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character22&size=150&backgroundColor=fd79a8&mood=happy',
+                    'avatar-23.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character23&size=150&backgroundColor=00b894&mood=happy',
+                    'avatar-24.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character24&size=150&backgroundColor=e84393&mood=happy',
+                    'avatar-25.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character25&size=150&backgroundColor=00cec9&mood=happy'
+                ];
+                
+                foreach ($vector_avatars as $filename => $url) {
+                    echo "<div class='photo-option' onclick='selectPhoto(\"$filename\", \"$url\")'>";
+                    echo "<img src='$url' alt='Avatar Option'>";
+                    echo "<div class='photo-overlay'>";
+                    echo "<i class='fas fa-check'></i>";
+                    echo "</div>";
+                    echo "</div>";
+                }
+                ?>
+            </div>
+            <div class="photo-modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closePhotoModal()">Batal</button>
+                <button type="button" class="btn btn-primary" onclick="saveSelectedPhoto()" id="savePhotoBtn" disabled>Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden form for photo update -->
+    <form id="photoUpdateForm" method="POST" style="display: none;">
+        <input type="hidden" name="action" value="update_photo">
+        <input type="hidden" name="selected_photo" id="selectedPhotoInput">
+    </form>
+
+    <style>
+        /* Photo Modal Styles */
+        .photo-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .photo-modal-content {
+            background-color: white;
+            margin: 2% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .photo-modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .photo-modal-header h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: white;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background-color 0.3s ease;
+        }
+
+        .close-modal:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 16px;
+            padding: 24px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .photo-option {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+        }
+
+        .photo-option:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .photo-option.selected {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+
+        .photo-option img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .photo-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(102, 126, 234, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .photo-option.selected .photo-overlay {
+            opacity: 1;
+        }
+
+        .photo-overlay i {
+            color: white;
+            font-size: 2rem;
+        }
+
+        .photo-modal-footer {
+            padding: 20px 24px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            background-color: #f8f9fa;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .photo-modal-content {
+                width: 95%;
+                margin: 5% auto;
+            }
+
+            .photo-grid {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+                gap: 12px;
+                padding: 16px;
+            }
+
+            .photo-modal-header,
+            .photo-modal-footer {
+                padding: 16px;
             }
         }
     </style>
+
+    <script>
+        let selectedPhoto = null;
+
+        function openPhotoModal() {
+            document.getElementById('photoModal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closePhotoModal() {
+            document.getElementById('photoModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+            
+            // Reset selection
+            document.querySelectorAll('.photo-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            selectedPhoto = null;
+            document.getElementById('savePhotoBtn').disabled = true;
+        }
+
+        function selectPhoto(filename, url) {
+            // Remove previous selection
+            document.querySelectorAll('.photo-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Add selection to clicked photo
+            event.currentTarget.classList.add('selected');
+            
+            selectedPhoto = filename;
+            document.getElementById('savePhotoBtn').disabled = false;
+        }
+
+        function saveSelectedPhoto() {
+            if (selectedPhoto) {
+                document.getElementById('selectedPhotoInput').value = selectedPhoto;
+                document.getElementById('photoUpdateForm').submit();
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('photoModal');
+            if (event.target === modal) {
+                closePhotoModal();
+            }
+        }
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closePhotoModal();
+            }
+        });
+    </script>
 </body>
 </html>

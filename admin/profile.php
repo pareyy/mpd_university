@@ -11,6 +11,41 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 // Include database connection
 require_once '../koneksi.php';
 
+// Function to get avatar URL
+function getAvatarUrl($photo_name) {
+    // Define available 3D cartoon avatars matching the exact reference image characters
+    $vector_avatars = [
+        'avatar-1.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character1&size=150&backgroundColor=4a90a4&mood=happy',
+        'avatar-2.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character2&size=150&backgroundColor=e74c3c&mood=happy',
+        'avatar-3.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character3&size=150&backgroundColor=3498db&mood=happy',
+        'avatar-4.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character4&size=150&backgroundColor=f39c12&mood=happy',
+        'avatar-5.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character5&size=150&backgroundColor=9b59b6&mood=happy',
+        'avatar-6.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character6&size=150&backgroundColor=1abc9c&mood=happy',
+        'avatar-7.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character7&size=150&backgroundColor=e67e22&mood=happy',
+        'avatar-8.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character8&size=150&backgroundColor=34495e&mood=happy',
+        'avatar-9.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character9&size=150&backgroundColor=e91e63&mood=happy',
+        'avatar-10.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character10&size=150&backgroundColor=ff6b6b&mood=happy',
+        'avatar-11.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character11&size=150&backgroundColor=4ecdc4&mood=happy',
+        'avatar-12.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character12&size=150&backgroundColor=ffe66d&mood=happy',
+        'avatar-13.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character13&size=150&backgroundColor=6c5ce7&mood=happy',
+        'avatar-14.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character14&size=150&backgroundColor=a55eea&mood=happy',
+        'avatar-15.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character15&size=150&backgroundColor=26de81&mood=happy',
+        'avatar-16.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character16&size=150&backgroundColor=2bcbba&mood=happy',
+        'avatar-17.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character17&size=150&backgroundColor=fd79a8&mood=happy',
+        'avatar-18.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character18&size=150&backgroundColor=fdcb6e&mood=happy',
+        'avatar-19.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character19&size=150&backgroundColor=e17055&mood=happy',
+        'avatar-20.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character20&size=150&backgroundColor=81ecec&mood=happy',
+        'avatar-21.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character21&size=150&backgroundColor=74b9ff&mood=happy',
+        'avatar-22.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character22&size=150&backgroundColor=fd79a8&mood=happy',
+        'avatar-23.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character23&size=150&backgroundColor=00b894&mood=happy',
+        'avatar-24.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character24&size=150&backgroundColor=e84393&mood=happy',
+        'avatar-25.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character25&size=150&backgroundColor=00cec9&mood=happy'
+    ];
+    
+    // Return vector avatar URL if available, otherwise return default
+    return isset($vector_avatars[$photo_name]) ? $vector_avatars[$photo_name] : $vector_avatars['avatar-1.svg'];
+}
+
 // Get admin information
 $user_id = $_SESSION['user_id'];
 $query = "SELECT * FROM users WHERE id = '$user_id'";
@@ -46,6 +81,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             if (mysqli_query($conn, $update_query)) {
                 $success_message = "Profil berhasil diperbarui!";
+                // Refresh user data
+                $result = mysqli_query($conn, $query);
+                $user = mysqli_fetch_assoc($result);
+            } else {
+                $error_message = "Error: " . mysqli_error($conn);
+            }
+        }
+        
+        if ($_POST['action'] == 'update_photo') {
+            $profile_photo = mysqli_real_escape_string($conn, $_POST['profile_photo']);
+            
+            $update_photo_query = "UPDATE users SET profile_photo = '$profile_photo' WHERE id = '$user_id'";
+            
+            if (mysqli_query($conn, $update_photo_query)) {
+                $success_message = "Foto profil berhasil diperbarui!";
                 // Refresh user data
                 $result = mysqli_query($conn, $query);
                 $user = mysqli_fetch_assoc($result);
@@ -115,11 +165,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             <div class="profile-layout">
                 <!-- Profile Sidebar -->
-                <div class="profile-sidebar">
-                    <div class="profile-card">
-                        <div class="profile-avatar">
-                            <img src="../assets/img/blank.jpg" alt="Profile Picture" id="profileImage">
-                            <button class="change-photo-btn" onclick="changePhoto()">
+                <div class="profile-sidebar">                    <div class="profile-card">                        <div class="profile-avatar">
+                            <img src="<?php echo getAvatarUrl($user['profile_photo'] ?? 'avatar-1.svg'); ?>" alt="Profile Picture" id="profileImage">
+                            <button class="change-photo-btn" onclick="openPhotoModal()">
                                 <i class="fas fa-camera"></i>
                             </button>
                         </div>
@@ -379,7 +427,73 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </main>
 
-    <?php include '../includes/footer.php'; ?>    <script>
+    <?php include '../includes/footer.php'; ?>
+
+    <!-- Photo Selection Modal -->
+    <div id="photoModal" class="photo-modal">
+        <div class="photo-modal-content">
+            <div class="photo-modal-header">
+                <h3><i class="fas fa-camera"></i> Pilih Foto Profil</h3>
+                <button class="photo-modal-close" onclick="closePhotoModal()">&times;</button>
+            </div>            <div class="photo-modal-body">                <p>Pilih salah satu avatar profil di bawah ini:</p>
+                <div class="photo-grid">
+                    <?php                    $vector_avatars = [
+                        'avatar-1.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character1&size=150&backgroundColor=4a90a4&mood=happy',
+                        'avatar-2.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character2&size=150&backgroundColor=e74c3c&mood=happy',
+                        'avatar-3.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character3&size=150&backgroundColor=3498db&mood=happy',
+                        'avatar-4.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character4&size=150&backgroundColor=f39c12&mood=happy',
+                        'avatar-5.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character5&size=150&backgroundColor=9b59b6&mood=happy',
+                        'avatar-6.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character6&size=150&backgroundColor=1abc9c&mood=happy',
+                        'avatar-7.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character7&size=150&backgroundColor=e67e22&mood=happy',
+                        'avatar-8.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character8&size=150&backgroundColor=34495e&mood=happy',
+                        'avatar-9.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character9&size=150&backgroundColor=e91e63&mood=happy',
+                        'avatar-10.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character10&size=150&backgroundColor=ff6b6b&mood=happy',
+                        'avatar-11.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character11&size=150&backgroundColor=4ecdc4&mood=happy',
+                        'avatar-12.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character12&size=150&backgroundColor=ffe66d&mood=happy',
+                        'avatar-13.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character13&size=150&backgroundColor=6c5ce7&mood=happy',
+                        'avatar-14.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character14&size=150&backgroundColor=a55eea&mood=happy',
+                        'avatar-15.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character15&size=150&backgroundColor=26de81&mood=happy',
+                        'avatar-16.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character16&size=150&backgroundColor=2bcbba&mood=happy',
+                        'avatar-17.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character17&size=150&backgroundColor=fd79a8&mood=happy',
+                        'avatar-18.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character18&size=150&backgroundColor=fdcb6e&mood=happy',
+                        'avatar-19.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character19&size=150&backgroundColor=e17055&mood=happy',
+                        'avatar-20.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character20&size=150&backgroundColor=81ecec&mood=happy',
+                        'avatar-21.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character21&size=150&backgroundColor=74b9ff&mood=happy',
+                        'avatar-22.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character22&size=150&backgroundColor=fd79a8&mood=happy',
+                        'avatar-23.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character23&size=150&backgroundColor=00b894&mood=happy',
+                        'avatar-24.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character24&size=150&backgroundColor=e84393&mood=happy',
+                        'avatar-25.svg' => 'https://api.dicebear.com/8.x/lorelei/svg?seed=character25&size=150&backgroundColor=00cec9&mood=happy'
+                    ];
+                    
+                    foreach ($vector_avatars as $photo_name => $photo_url): ?>
+                        <div class="photo-option <?php echo ($user['profile_photo'] ?? 'avatar-1.svg') === $photo_name ? 'selected' : ''; ?>" 
+                             data-photo="<?php echo $photo_name; ?>" onclick="selectPhoto('<?php echo $photo_name; ?>')">
+                            <img src="<?php echo $photo_url; ?>" alt="<?php echo $photo_name; ?>">
+                            <div class="photo-overlay">
+                                <i class="fas fa-check"></i>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <div class="photo-modal-footer">
+                <button class="btn btn-secondary" onclick="closePhotoModal()">
+                    <i class="fas fa-times"></i> Batal
+                </button>
+                <button class="btn btn-primary" onclick="saveSelectedPhoto()">
+                    <i class="fas fa-save"></i> Simpan Foto
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden form for photo update -->
+    <form id="photoUpdateForm" method="POST" style="display: none;">
+        <input type="hidden" name="action" value="update_photo">
+        <input type="hidden" name="profile_photo" id="selectedPhoto">
+    </form>    <script>
+        let selectedPhotoName = '';
+
         function toggleEdit(section) {
             if (section === 'profile') {
                 const form = document.getElementById('profileForm');
@@ -403,10 +517,53 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
 
-        function changePhoto() {
-            // Implement photo change functionality
-            alert('Fitur ubah foto akan segera tersedia!');
+        function openPhotoModal() {
+            document.getElementById('photoModal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
         }
+
+        function closePhotoModal() {
+            document.getElementById('photoModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        function selectPhoto(photoName) {
+            // Remove selection from all photos
+            document.querySelectorAll('.photo-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Add selection to clicked photo
+            const selectedOption = document.querySelector(`[data-photo="${photoName}"]`);
+            if (selectedOption) {
+                selectedOption.classList.add('selected');
+                selectedPhotoName = photoName;
+            }
+        }
+
+        function saveSelectedPhoto() {
+            if (selectedPhotoName) {
+                document.getElementById('selectedPhoto').value = selectedPhotoName;
+                document.getElementById('photoUpdateForm').submit();
+            } else {
+                alert('Silakan pilih foto terlebih dahulu!');
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('photoModal');
+            if (event.target == modal) {
+                closePhotoModal();
+            }
+        }
+
+        // Handle escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closePhotoModal();
+            }
+        });
 
         // Password confirmation validation
         document.getElementById('confirm_password').addEventListener('input', function() {
@@ -419,7 +576,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 this.setCustomValidity('');
             }
         });
-    </script>    <style>
+    </script><style>
         .profile-layout {
             display: grid;
             grid-template-columns: 350px 1fr;
@@ -822,6 +979,155 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             border: 1px solid #fca5a5;
         }
 
+        /* Photo Modal Styles */
+        .photo-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
+
+        .photo-modal-content {
+            background-color: white;
+            margin: 2% auto;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .photo-modal-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .photo-modal-header h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .photo-modal-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s ease;
+        }
+
+        .photo-modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .photo-modal-body {
+            padding: 2rem;
+        }
+
+        .photo-modal-body p {
+            margin: 0 0 1.5rem 0;
+            color: #6b7280;
+            font-size: 1rem;
+        }
+
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .photo-option {
+            position: relative;
+            cursor: pointer;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .photo-option:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .photo-option.selected {
+            border-color: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.3);
+        }
+
+        .photo-option img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .photo-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(37, 99, 235, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .photo-option.selected .photo-overlay {
+            opacity: 1;
+        }
+
+        .photo-overlay i {
+            color: white;
+            font-size: 2rem;
+        }
+
+        .photo-modal-footer {
+            padding: 1.5rem 2rem;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            background: #f8fafc;
+            border-radius: 0 0 12px 12px;
+        }
+
         /* Mobile responsive */
         @media (max-width: 1024px) {
             .dashboard-container {
@@ -1128,6 +1434,84 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             .form-control:focus {
                 border-color: #667eea;
                 box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+            }
+        }
+
+        /* Mobile responsive for photo modal */
+        @media (max-width: 768px) {
+            .photo-modal-content {
+                margin: 5% auto;
+                width: 95%;
+                max-height: 85vh;
+            }
+
+            .photo-modal-header {
+                padding: 1rem 1.5rem;
+            }
+
+            .photo-modal-header h3 {
+                font-size: 1.1rem;
+            }
+
+            .photo-modal-close {
+                width: 35px;
+                height: 35px;
+                font-size: 1.5rem;
+            }
+
+            .photo-modal-body {
+                padding: 1.5rem;
+            }
+
+            .photo-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                gap: 0.75rem;
+            }
+
+            .photo-option img {
+                height: 100px;
+            }
+
+            .photo-modal-footer {
+                padding: 1rem 1.5rem;
+                flex-direction: column;
+            }
+
+            .photo-modal-footer .btn {
+                width: 100%;
+                margin: 0;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .photo-modal-content {
+                margin: 10% auto;
+                width: 98%;
+            }
+
+            .photo-modal-header {
+                padding: 0.75rem 1rem;
+            }
+
+            .photo-modal-body {
+                padding: 1rem;
+            }
+
+            .photo-grid {
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+                gap: 0.5rem;
+            }
+
+            .photo-option img {
+                height: 80px;
+            }
+
+            .photo-overlay i {
+                font-size: 1.5rem;
+            }
+
+            .photo-modal-footer {
+                padding: 0.75rem 1rem;
             }
         }
     </style>

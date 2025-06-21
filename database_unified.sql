@@ -13,8 +13,10 @@ CREATE TABLE users (
     role VARCHAR(20) NOT NULL,
     full_name VARCHAR(100),
     nip VARCHAR(20),
-    email VARCHAR(100),    phone VARCHAR(20),
+    email VARCHAR(100),
+    phone VARCHAR(20),
     alamat TEXT,
+    profile_photo VARCHAR(255) DEFAULT 'avatar-1.jpg',
     created_at DATETIME DEFAULT NOW(),
     last_login DATETIME NULL
 );

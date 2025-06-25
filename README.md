@@ -1,6 +1,6 @@
 # MPD University - Portal Akademik
 
-![MPD University Logo](assets/img/logo.jpg)
+![MPD University Logo](assets/img/logo.png)
 
 Portal akademik modern untuk mengelola sistem informasi universitas dengan antarmuka yang responsif dan user-friendly.
 

@@ -22,7 +22,7 @@ session_start();
         <div class="login-page">
             <div class="login-container">
                 <div class="text-center">
-                    <img src="assets/img/logo.jpg" alt="MPD University Logo" class="university-logo">
+                    <img src="assets/img/logo.png" alt="MPD University Logo" class="university-logo">
                     <h2>Login Portal</h2>
                     <p>Silahkan masuk untuk akses sistem akademik</p>
                 </div>

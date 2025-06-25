@@ -2,7 +2,7 @@
     <div class="nav-container">
         <div class="nav-logo">
             <a href="index.php">
-                <img src="../assets/img/logo.jpg" alt="MPD University">
+                <img src="../assets/img/logo.png" alt="MPD University">
                 <span>MPD Admin</span>
             </a>
         </div>

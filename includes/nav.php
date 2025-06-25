@@ -1,7 +1,8 @@
 <nav>
     <div class="navbar-container">
         <div class="navbar-logo">
-            <i class="fa-solid fa-university"></i> MPD University
+            <img src="assets/img/logo.png" width="50px" alt="logo"></img>
+            MPD University
         </div>
         <div class="navbar-actions">
             <div class="navbar-menu" id="navbarMenu">

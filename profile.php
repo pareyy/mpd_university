@@ -19,7 +19,7 @@
     <main>
         <div class="container">
             <div class="text-center mb-4">
-                <img src="assets/img/logo.jpg" alt="MPD University Logo" class="school-logo">
+                <img src="assets/img/logo.png" alt="MPD University Logo" class="school-logo">
                 <h1 class="mt-3">MPD University</h1>
             </div>
             

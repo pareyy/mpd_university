@@ -200,3 +200,126 @@
     color: #555;
     font-weight: 500;
 }
+
+.calendar-category {
+    display: inline-block;
+    background: #e0e7ff;
+    color: #3730a3;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    margin-top: 0.5rem;
+}
+
+.no-articles {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: #6b7280;
+}
+
+.no-articles i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: #d1d5db;
+}
+
+.no-articles h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+    color: #374151;
+}
+
+.no-articles p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.article-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding: 1rem 0;
+}
+
+.nav-button {
+    padding: 0.75rem 1.5rem;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.nav-button:hover:not(:disabled) {
+    background: #5a67d8;
+    transform: translateY(-1px);
+}
+
+.nav-button:disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.page-indicator {
+    font-size: 0.9rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* Mobile responsive updates */
+@media (max-width: 768px) {
+    .calendar-category {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.6rem;
+    }
+
+    .article-navigation {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .nav-button {
+        padding: 0.75rem 1rem;
+        font-size: 0.85rem;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .page-indicator {
+        order: -1;
+    }
+
+    .no-articles {
+        padding: 2rem 1rem;
+    }
+
+    .no-articles i {
+        font-size: 2.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-button {
+        padding: 0.875rem;
+        font-size: 0.9rem;
+    }
+
+    .no-articles i {
+        font-size: 2rem;
+    }
+
+    .no-articles h3 {
+        font-size: 1.1rem;
+    }
+}

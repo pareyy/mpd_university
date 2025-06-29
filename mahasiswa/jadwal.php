@@ -13,63 +13,69 @@ require_once '../koneksi.php';
 
 // Get mahasiswa information
 $user_id = $_SESSION['user_id'];
-$query = "SELECT * FROM users WHERE id = '$user_id'";
+$query = "SELECT m.*, ps.nama as program_studi_nama, f.nama as fakultas_nama 
+          FROM mahasiswa m 
+          JOIN program_studi ps ON m.program_studi_id = ps.id 
+          JOIN fakultas f ON ps.fakultas_id = f.id 
+          WHERE m.user_id = '$user_id'";
 $result = mysqli_query($conn, $query);
-$user = mysqli_fetch_assoc($result);
+$mahasiswa = mysqli_fetch_assoc($result);
 
-// Sample jadwal data
+if (!$mahasiswa) {
+    echo "Data mahasiswa tidak ditemukan!";
+    exit();
+}
+
+// Get enrolled courses with schedule information
+$jadwal_query = "SELECT 
+    j.hari,
+    j.jam_mulai,
+    j.jam_selesai,
+    j.ruang,
+    j.kelas,
+    mk.nama_mk as mata_kuliah,
+    mk.sks,
+    d.nama as dosen
+FROM kelas k
+JOIN mata_kuliah mk ON k.mata_kuliah_id = mk.id
+JOIN jadwal j ON mk.id = j.mata_kuliah_id
+JOIN dosen d ON mk.dosen_id = d.id
+WHERE k.mahasiswa_id = '{$mahasiswa['id']}'
+ORDER BY 
+    CASE j.hari 
+        WHEN 'Senin' THEN 1
+        WHEN 'Selasa' THEN 2
+        WHEN 'Rabu' THEN 3
+        WHEN 'Kamis' THEN 4
+        WHEN 'Jumat' THEN 5
+        WHEN 'Sabtu' THEN 6
+        WHEN 'Minggu' THEN 7
+    END,
+    j.jam_mulai";
+
+$jadwal_result = mysqli_query($conn, $jadwal_query);
 $jadwal_mingguan = [
-    'Senin' => [
-        [
-            'jam_mulai' => '08:00',
-            'jam_selesai' => '10:30',
-            'mata_kuliah' => 'Pemrograman Web Lanjut',
-            'dosen' => 'Dr. Ahmad Rahman',
-            'ruang' => 'Lab 1',
-            'kelas' => 'A'
-        ],
-        [
-            'jam_mulai' => '10:30',
-            'jam_selesai' => '12:00',
-            'mata_kuliah' => 'Database',
-            'dosen' => 'Prof. Siti Nurhaliza',
-            'ruang' => 'Ruang 201',
-            'kelas' => 'B'
-        ]
-    ],
-    'Selasa' => [
-        [
-            'jam_mulai' => '13:00',
-            'jam_selesai' => '15:30',
-            'mata_kuliah' => 'Algoritma dan Struktur Data',
-            'dosen' => 'Dr. Budi Santoso',
-            'ruang' => 'Ruang 105',
-            'kelas' => 'C'
-        ]
-    ],
-    'Rabu' => [
-        [
-            'jam_mulai' => '08:00',
-            'jam_selesai' => '10:30',
-            'mata_kuliah' => 'Sistem Basis Data',
-            'dosen' => 'Dr. Maya Putri',
-            'ruang' => 'Lab 2',
-            'kelas' => 'A'
-        ]
-    ],
-    'Kamis' => [
-        [
-            'jam_mulai' => '10:30',
-            'jam_selesai' => '12:00',
-            'mata_kuliah' => 'Pemrograman Mobile',
-            'dosen' => 'Dr. Rendi Pratama',
-            'ruang' => 'Lab 3',
-            'kelas' => 'B'
-        ]
-    ],
+    'Senin' => [],
+    'Selasa' => [],
+    'Rabu' => [],
+    'Kamis' => [],
     'Jumat' => [],
-    'Sabtu' => []
+    'Sabtu' => [],
+    'Minggu' => []
 ];
+
+// Organize schedule by day
+while ($row = mysqli_fetch_assoc($jadwal_result)) {
+    $jadwal_mingguan[$row['hari']][] = [
+        'jam_mulai' => $row['jam_mulai'],
+        'jam_selesai' => $row['jam_selesai'],
+        'mata_kuliah' => $row['mata_kuliah'],
+        'dosen' => $row['dosen'],
+        'ruang' => $row['ruang'],
+        'kelas' => $row['kelas'],
+        'sks' => $row['sks']
+    ];
+}
 
 $hari_list = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
@@ -85,6 +91,75 @@ $hari_indonesia = [
     'Sunday' => 'Minggu'
 ];
 $today_indo = $hari_indonesia[$today];
+
+// Get upcoming classes for the next few days
+$upcoming_query = "SELECT 
+    j.hari,
+    j.jam_mulai,
+    j.jam_selesai,
+    j.ruang,
+    j.kelas,
+    mk.nama_mk as mata_kuliah,
+    d.nama as dosen,
+    CASE j.hari 
+        WHEN 'Senin' THEN 1
+        WHEN 'Selasa' THEN 2
+        WHEN 'Rabu' THEN 3
+        WHEN 'Kamis' THEN 4
+        WHEN 'Jumat' THEN 5
+        WHEN 'Sabtu' THEN 6
+        WHEN 'Minggu' THEN 7
+    END as hari_num
+FROM kelas k
+JOIN mata_kuliah mk ON k.mata_kuliah_id = mk.id
+JOIN jadwal j ON mk.id = j.mata_kuliah_id
+JOIN dosen d ON mk.dosen_id = d.id
+WHERE k.mahasiswa_id = '{$mahasiswa['id']}'
+ORDER BY 
+    CASE 
+        WHEN hari_num >= DAYOFWEEK(CURDATE()) THEN hari_num
+        ELSE hari_num + 7
+    END,
+    j.jam_mulai
+LIMIT 3";
+
+$upcoming_result = mysqli_query($conn, $upcoming_query);
+$next_classes = [];
+while ($row = mysqli_fetch_assoc($upcoming_result)) {
+    $next_classes[] = [
+        'hari' => $row['hari'],
+        'jam' => substr($row['jam_mulai'], 0, 5),
+        'mata_kuliah' => $row['mata_kuliah'],
+        'ruang' => $row['ruang'],
+        'dosen' => $row['dosen']
+    ];
+}
+
+// Calculate statistics
+$total_classes = 0;
+$total_hours = 0;
+$rooms = [];
+$max_classes = 0;
+$busiest_day = '';
+
+foreach ($jadwal_mingguan as $day => $schedule) {
+    $day_classes = count($schedule);
+    $total_classes += $day_classes;
+    
+    if ($day_classes > $max_classes) {
+        $max_classes = $day_classes;
+        $busiest_day = $day;
+    }
+    
+    foreach ($schedule as $jadwal) {
+        $start = strtotime($jadwal['jam_mulai']);
+        $end = strtotime($jadwal['jam_selesai']);
+        $total_hours += ($end - $start) / 3600;
+        $rooms[] = $jadwal['ruang'];
+    }
+}
+
+$unique_rooms = array_unique($rooms);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -93,7 +168,7 @@ $today_indo = $hari_indonesia[$today];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jadwal Kuliah - MPD University</title>
     <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/mahasiswa.css">
     <!-- Font Awesome CDN for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -102,9 +177,17 @@ $today_indo = $hari_indonesia[$today];
 
     <main>
         <div class="dashboard-container">
+            <div class="page-header">
+                <h1><i class="fas fa-book"></i> Jadwal Kuliah</h1>
+                <div class="page-info">
+                    <div class="semester-info">
+                        Kelola mata kuliah untuk <?php echo $mahasiswa['nama']; ?> - <?php echo $mahasiswa['program_studi_nama']; ?>
+                    </div>
+                </div>
+            </div>
             <div class="dashboard-header">
                 <h1><i class="fas fa-calendar"></i> Jadwal Kuliah</h1>
-                <p>Jadwal kuliah mingguan dan agenda harian Anda</p>
+                <p>Jadwal kuliah mingguan dan agenda harian untuk <?php echo $mahasiswa['nama']; ?> - <?php echo $mahasiswa['program_studi_nama']; ?></p>
             </div>
 
             <!-- Today's Schedule Highlight -->
@@ -116,13 +199,13 @@ $today_indo = $hari_indonesia[$today];
                             <?php foreach ($jadwal_mingguan[$today_indo] as $jadwal): ?>
                                 <div class="schedule-highlight-card">
                                     <div class="schedule-time-badge">
-                                        <span class="time"><?php echo $jadwal['jam_mulai']; ?></span>
+                                        <span class="time"><?php echo substr($jadwal['jam_mulai'], 0, 5); ?></span>
                                         <span class="duration">
                                             <?php 
                                             $start = strtotime($jadwal['jam_mulai']);
                                             $end = strtotime($jadwal['jam_selesai']);
                                             $duration = ($end - $start) / 3600;
-                                            echo $duration . ' jam';
+                                            echo $duration . ' jam (' . $jadwal['sks'] . ' SKS)';
                                             ?>
                                         </span>
                                     </div>
@@ -135,7 +218,7 @@ $today_indo = $hari_indonesia[$today];
                                             <i class="fas fa-map-marker-alt"></i> <?php echo $jadwal['ruang']; ?> | Kelas <?php echo $jadwal['kelas']; ?>
                                         </p>
                                         <p class="schedule-time-range">
-                                            <i class="fas fa-clock"></i> <?php echo $jadwal['jam_mulai']; ?> - <?php echo $jadwal['jam_selesai']; ?>
+                                            <i class="fas fa-clock"></i> <?php echo substr($jadwal['jam_mulai'], 0, 5); ?> - <?php echo substr($jadwal['jam_selesai'], 0, 5); ?>
                                         </p>
                                     </div>
                                     <div class="schedule-actions">
@@ -180,7 +263,7 @@ $today_indo = $hari_indonesia[$today];
                                         <?php foreach ($jadwal_mingguan[$hari] as $jadwal): ?>
                                             <div class="schedule-item">
                                                 <div class="schedule-time">
-                                                    <?php echo $jadwal['jam_mulai']; ?> - <?php echo $jadwal['jam_selesai']; ?>
+                                                    <?php echo substr($jadwal['jam_mulai'], 0, 5); ?> - <?php echo substr($jadwal['jam_selesai'], 0, 5); ?>
                                                 </div>
                                                 <div class="schedule-course">
                                                     <?php echo $jadwal['mata_kuliah']; ?>
@@ -188,6 +271,7 @@ $today_indo = $hari_indonesia[$today];
                                                 <div class="schedule-info">
                                                     <span><i class="fas fa-user-tie"></i> <?php echo $jadwal['dosen']; ?></span>
                                                     <span><i class="fas fa-map-marker-alt"></i> <?php echo $jadwal['ruang']; ?></span>
+                                                    <span><i class="fas fa-graduation-cap"></i> <?php echo $jadwal['sks']; ?> SKS</span>
                                                 </div>
                                             </div>
                                         <?php endforeach; ?>
@@ -214,15 +298,7 @@ $today_indo = $hari_indonesia[$today];
                         </div>
                         <div class="stat-text">
                             <h4>Total Kelas/Minggu</h4>
-                            <p>
-                                <?php 
-                                $total_classes = 0;
-                                foreach ($jadwal_mingguan as $day_schedule) {
-                                    $total_classes += count($day_schedule);
-                                }
-                                echo $total_classes; 
-                                ?> kelas
-                            </p>
+                            <p><?php echo $total_classes; ?> kelas</p>
                         </div>
                     </div>
                     
@@ -232,19 +308,7 @@ $today_indo = $hari_indonesia[$today];
                         </div>
                         <div class="stat-text">
                             <h4>Total Jam Kuliah</h4>
-                            <p>
-                                <?php 
-                                $total_hours = 0;
-                                foreach ($jadwal_mingguan as $day_schedule) {
-                                    foreach ($day_schedule as $schedule) {
-                                        $start = strtotime($schedule['jam_mulai']);
-                                        $end = strtotime($schedule['jam_selesai']);
-                                        $total_hours += ($end - $start) / 3600;
-                                    }
-                                }
-                                echo $total_hours; 
-                                ?> jam/minggu
-                            </p>
+                            <p><?php echo number_format($total_hours, 1); ?> jam/minggu</p>
                         </div>
                     </div>
                     
@@ -254,17 +318,7 @@ $today_indo = $hari_indonesia[$today];
                         </div>
                         <div class="stat-text">
                             <h4>Ruang yang Digunakan</h4>
-                            <p>
-                                <?php 
-                                $rooms = [];
-                                foreach ($jadwal_mingguan as $day_schedule) {
-                                    foreach ($day_schedule as $schedule) {
-                                        $rooms[] = $schedule['ruang'];
-                                    }
-                                }
-                                echo count(array_unique($rooms)); 
-                                ?> ruang
-                            </p>
+                            <p><?php echo count($unique_rooms); ?> ruang</p>
                         </div>
                     </div>
                     
@@ -274,19 +328,7 @@ $today_indo = $hari_indonesia[$today];
                         </div>
                         <div class="stat-text">
                             <h4>Hari Tersibuk</h4>
-                            <p>
-                                <?php 
-                                $max_classes = 0;
-                                $busiest_day = '';
-                                foreach ($jadwal_mingguan as $day => $schedule) {
-                                    if (count($schedule) > $max_classes) {
-                                        $max_classes = count($schedule);
-                                        $busiest_day = $day;
-                                    }
-                                }
-                                echo $busiest_day ?: 'Tidak ada'; 
-                                ?>
-                            </p>
+                            <p><?php echo $busiest_day ?: 'Tidak ada'; ?></p>
                         </div>
                     </div>
                 </div>
@@ -296,36 +338,56 @@ $today_indo = $hari_indonesia[$today];
             <div class="dashboard-section">
                 <h2><i class="fas fa-clock"></i> Kelas Mendatang</h2>
                 <div class="upcoming-classes">
-                    <?php
-                    // Get next 3 upcoming classes
-                    $upcoming = [];
-                    $current_time = time();
-                    $current_day = date('w'); // 0 = Sunday, 1 = Monday, etc.
-                    
-                    // Sample upcoming classes
-                    $next_classes = [
-                        ['hari' => 'Senin', 'jam' => '08:00', 'mata_kuliah' => 'Pemrograman Web Lanjut', 'ruang' => 'Lab 1'],
-                        ['hari' => 'Selasa', 'jam' => '13:00', 'mata_kuliah' => 'Algoritma dan Struktur Data', 'ruang' => 'Ruang 105'],
-                        ['hari' => 'Rabu', 'jam' => '08:00', 'mata_kuliah' => 'Sistem Basis Data', 'ruang' => 'Lab 2']
-                    ];
-                    ?>
-                    
                     <div class="upcoming-list">
-                        <?php foreach ($next_classes as $class): ?>
-                            <div class="upcoming-item">
-                                <div class="upcoming-time">
-                                    <span class="day"><?php echo $class['hari']; ?></span>
-                                    <span class="time"><?php echo $class['jam']; ?></span>
+                        <?php if (!empty($next_classes)): ?>
+                            <?php foreach ($next_classes as $index => $class): ?>
+                                <div class="upcoming-item">
+                                    <div class="upcoming-time">
+                                        <span class="day"><?php echo $class['hari']; ?></span>
+                                        <span class="time"><?php echo $class['jam']; ?></span>
+                                    </div>
+                                    <div class="upcoming-details">
+                                        <h4><?php echo $class['mata_kuliah']; ?></h4>
+                                        <p><i class="fas fa-map-marker-alt"></i> <?php echo $class['ruang']; ?></p>
+                                        <p><i class="fas fa-user-tie"></i> <?php echo $class['dosen']; ?></p>
+                                    </div>
+                                    <div class="upcoming-countdown">
+                                        <span class="countdown-text">
+                                            <?php
+                                            // Calculate days until this class
+                                            $current_day = date('w'); // 0 = Sunday, 1 = Monday, etc.
+                                            $class_day_map = [
+                                                'Minggu' => 0, 'Senin' => 1, 'Selasa' => 2, 'Rabu' => 3,
+                                                'Kamis' => 4, 'Jumat' => 5, 'Sabtu' => 6
+                                            ];
+                                            $class_day = $class_day_map[$class['hari']];
+                                            
+                                            if ($class_day > $current_day) {
+                                                $days_diff = $class_day - $current_day;
+                                            } else if ($class_day < $current_day) {
+                                                $days_diff = 7 - ($current_day - $class_day);
+                                            } else {
+                                                $days_diff = 0;
+                                            }
+                                            
+                                            if ($days_diff == 0) {
+                                                echo "Hari ini";
+                                            } else if ($days_diff == 1) {
+                                                echo "Besok";
+                                            } else {
+                                                echo $days_diff . " hari lagi";
+                                            }
+                                            ?>
+                                        </span>
+                                    </div>
                                 </div>
-                                <div class="upcoming-details">
-                                    <h4><?php echo $class['mata_kuliah']; ?></h4>
-                                    <p><i class="fas fa-map-marker-alt"></i> <?php echo $class['ruang']; ?></p>
-                                </div>
-                                <div class="upcoming-countdown">
-                                    <span class="countdown-text">2 hari lagi</span>
-                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="no-upcoming">
+                                <i class="fas fa-calendar-times"></i>
+                                <p>Tidak ada kelas mendatang dalam waktu dekat</p>
                             </div>
-                        <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -334,7 +396,9 @@ $today_indo = $hari_indonesia[$today];
 
     <?php include '../includes/footer.php'; ?>
 
+    <!-- ...existing styles... -->
     <style>
+        /* All existing styles remain the same */
         .today-highlight {
             background: white;
             border-radius: 12px;
@@ -625,6 +689,17 @@ $today_indo = $hari_indonesia[$today];
             border-radius: 20px;
             font-size: 0.875rem;
             font-weight: 600;
+        }
+
+        .no-upcoming {
+            text-align: center;
+            color: #6b7280;
+            padding: 2rem;
+        }
+
+        .no-upcoming i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
         }
 
         @media (max-width: 768px) {

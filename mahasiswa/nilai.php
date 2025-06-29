@@ -13,48 +13,66 @@ require_once '../koneksi.php';
 
 // Get mahasiswa information
 $user_id = $_SESSION['user_id'];
-$query = "SELECT * FROM users WHERE id = '$user_id'";
-$result = mysqli_query($conn, $query);
-$user = mysqli_fetch_assoc($result);
+$mahasiswa_query = "SELECT m.*, ps.nama as program_studi_nama, f.nama as fakultas_nama 
+                    FROM mahasiswa m 
+                    JOIN program_studi ps ON m.program_studi_id = ps.id 
+                    JOIN fakultas f ON ps.fakultas_id = f.id 
+                    WHERE m.user_id = '$user_id'";
+$mahasiswa_result = mysqli_query($conn, $mahasiswa_query);
+$mahasiswa = mysqli_fetch_assoc($mahasiswa_result);
 
-// Sample transcript data
-$transkrip_data = [
-    'Semester 1' => [
-        ['kode' => 'MAT101', 'mata_kuliah' => 'Matematika Dasar', 'sks' => 3, 'nilai' => 'A', 'bobot' => 4.0],
-        ['kode' => 'FIS101', 'mata_kuliah' => 'Fisika Dasar', 'sks' => 3, 'nilai' => 'B+', 'bobot' => 3.5],
-        ['kode' => 'KIM101', 'mata_kuliah' => 'Kimia Dasar', 'sks' => 3, 'nilai' => 'A-', 'bobot' => 3.7],
-        ['kode' => 'ING101', 'mata_kuliah' => 'Bahasa Inggris', 'sks' => 2, 'nilai' => 'A', 'bobot' => 4.0],
-        ['kode' => 'PWK101', 'mata_kuliah' => 'Pengantar Komputer', 'sks' => 3, 'nilai' => 'A', 'bobot' => 4.0]
-    ],
-    'Semester 2' => [
-        ['kode' => 'MAT201', 'mata_kuliah' => 'Kalkulus', 'sks' => 4, 'nilai' => 'B+', 'bobot' => 3.5],
-        ['kode' => 'ALG201', 'mata_kuliah' => 'Aljabar Linear', 'sks' => 3, 'nilai' => 'A', 'bobot' => 4.0],
-        ['kode' => 'PRG201', 'mata_kuliah' => 'Pemrograman Dasar', 'sks' => 4, 'nilai' => 'A-', 'bobot' => 3.7],
-        ['kode' => 'STA201', 'mata_kuliah' => 'Statistika', 'sks' => 3, 'nilai' => 'B', 'bobot' => 3.0],
-        ['kode' => 'AGM201', 'mata_kuliah' => 'Agama', 'sks' => 2, 'nilai' => 'A', 'bobot' => 4.0]
-    ],
-    'Semester 3' => [
-        ['kode' => 'ASD301', 'mata_kuliah' => 'Algoritma dan Struktur Data', 'sks' => 4, 'nilai' => 'A-', 'bobot' => 3.7],
-        ['kode' => 'OOP301', 'mata_kuliah' => 'Pemrograman Berorientasi Objek', 'sks' => 3, 'nilai' => 'A', 'bobot' => 4.0],
-        ['kode' => 'MDS301', 'mata_kuliah' => 'Matematika Diskrit', 'sks' => 3, 'nilai' => 'B+', 'bobot' => 3.5],
-        ['kode' => 'BDT301', 'mata_kuliah' => 'Basis Data', 'sks' => 3, 'nilai' => 'A', 'bobot' => 4.0],
-        ['kode' => 'JAR301', 'mata_kuliah' => 'Jaringan Komputer', 'sks' => 3, 'nilai' => 'B+', 'bobot' => 3.5]
-    ],
-    'Semester 4' => [
-        ['kode' => 'RPL401', 'mata_kuliah' => 'Rekayasa Perangkat Lunak', 'sks' => 3, 'nilai' => 'A', 'bobot' => 4.0],
-        ['kode' => 'SBD401', 'mata_kuliah' => 'Sistem Basis Data', 'sks' => 3, 'nilai' => 'B', 'bobot' => 3.0],
-        ['kode' => 'SO401', 'mata_kuliah' => 'Sistem Operasi', 'sks' => 3, 'nilai' => 'A-', 'bobot' => 3.7],
-        ['kode' => 'PWB401', 'mata_kuliah' => 'Pemrograman Web', 'sks' => 4, 'nilai' => 'A', 'bobot' => 4.0],
-        ['kode' => 'HCI401', 'mata_kuliah' => 'Human Computer Interaction', 'sks' => 3, 'nilai' => 'B+', 'bobot' => 3.5]
-    ],
-    'Semester 5' => [
-        ['kode' => 'PWL501', 'mata_kuliah' => 'Pemrograman Web Lanjut', 'sks' => 3, 'nilai' => 'A', 'bobot' => 4.0],
-        ['kode' => 'DB501', 'mata_kuliah' => 'Database', 'sks' => 3, 'nilai' => 'B+', 'bobot' => 3.5],
-        ['kode' => 'AI501', 'mata_kuliah' => 'Artificial Intelligence', 'sks' => 3, 'nilai' => 'A-', 'bobot' => 3.7],
-        ['kode' => 'PM501', 'mata_kuliah' => 'Pemrograman Mobile', 'sks' => 3, 'nilai' => 'A', 'bobot' => 4.0],
-        ['kode' => 'KWU501', 'mata_kuliah' => 'Kewirausahaan', 'sks' => 2, 'nilai' => 'A', 'bobot' => 4.0]
-    ]
-];
+if (!$mahasiswa) {
+    echo "Data mahasiswa tidak ditemukan!";
+    exit();
+}
+
+// Get transkrip data from database
+$transkrip_query = "SELECT 
+    mk.semester,
+    mk.kode_mk,
+    mk.nama_mk,
+    mk.sks,
+    n.tugas1,
+    n.tugas2,
+    n.uts,
+    n.uas,
+    n.nilai_akhir,
+    n.grade,
+    CASE 
+        WHEN n.grade = 'A' THEN 4.0
+        WHEN n.grade = 'A-' THEN 3.7
+        WHEN n.grade = 'B+' THEN 3.3
+        WHEN n.grade = 'B' THEN 3.0
+        WHEN n.grade = 'B-' THEN 2.7
+        WHEN n.grade = 'C+' THEN 2.3
+        WHEN n.grade = 'C' THEN 2.0
+        WHEN n.grade = 'C-' THEN 1.7
+        WHEN n.grade = 'D' THEN 1.0
+        ELSE 0
+    END as bobot
+FROM kelas k
+JOIN mata_kuliah mk ON k.mata_kuliah_id = mk.id
+LEFT JOIN nilai n ON mk.id = n.mata_kuliah_id AND n.mahasiswa_id = k.mahasiswa_id
+WHERE k.mahasiswa_id = '{$mahasiswa['id']}'
+ORDER BY mk.semester, mk.nama_mk";
+
+$transkrip_result = mysqli_query($conn, $transkrip_query);
+$transkrip_data = [];
+
+while ($row = mysqli_fetch_assoc($transkrip_result)) {
+    $semester_name = 'Semester ' . $row['semester'];
+    if (!isset($transkrip_data[$semester_name])) {
+        $transkrip_data[$semester_name] = [];
+    }
+    
+    $transkrip_data[$semester_name][] = [
+        'kode' => $row['kode_mk'],
+        'mata_kuliah' => $row['nama_mk'],
+        'sks' => $row['sks'],
+        'nilai' => $row['grade'] ?: 'Belum Ada',
+        'bobot' => $row['bobot']
+    ];
+}
 
 // Calculate semester and cumulative GPA
 function calculateGPA($grades) {
@@ -62,8 +80,10 @@ function calculateGPA($grades) {
     $total_sks = 0;
     
     foreach ($grades as $grade) {
-        $total_points += $grade['sks'] * $grade['bobot'];
-        $total_sks += $grade['sks'];
+        if ($grade['nilai'] !== 'Belum Ada') {
+            $total_points += $grade['sks'] * $grade['bobot'];
+            $total_sks += $grade['sks'];
+        }
     }
     
     return $total_sks > 0 ? round($total_points / $total_sks, 2) : 0;
@@ -75,8 +95,10 @@ function calculateCumulativeGPA($all_grades) {
     
     foreach ($all_grades as $semester_grades) {
         foreach ($semester_grades as $grade) {
-            $total_points += $grade['sks'] * $grade['bobot'];
-            $total_sks += $grade['sks'];
+            if ($grade['nilai'] !== 'Belum Ada') {
+                $total_points += $grade['sks'] * $grade['bobot'];
+                $total_sks += $grade['sks'];
+            }
         }
     }
     
@@ -85,9 +107,14 @@ function calculateCumulativeGPA($all_grades) {
 
 $cumulative_gpa = calculateCumulativeGPA($transkrip_data);
 $total_sks = 0;
+$total_sks_lulus = 0;
+
 foreach ($transkrip_data as $semester_grades) {
     foreach ($semester_grades as $grade) {
         $total_sks += $grade['sks'];
+        if ($grade['nilai'] !== 'Belum Ada' && $grade['nilai'] !== 'E') {
+            $total_sks_lulus += $grade['sks'];
+        }
     }
 }
 ?>
@@ -98,7 +125,7 @@ foreach ($transkrip_data as $semester_grades) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transkrip Nilai - MPD University</title>
     <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/mahasiswa.css">
     <!-- Font Awesome CDN for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -107,9 +134,13 @@ foreach ($transkrip_data as $semester_grades) {
 
     <main>
         <div class="dashboard-container">
-            <div class="dashboard-header">
-                <h1><i class="fas fa-chart-line"></i> Transkrip Nilai</h1>
-                <p>Transkrip akademik dan riwayat nilai Anda</p>
+            <div class="page-header">
+                <h1><i class="fas fa-book"></i> Transkrip Nilai</h1>
+                <div class="page-info">
+                    <div class="course-info">
+                        Transkrip akademik untuk <?php echo $mahasiswa['nama']; ?> - <?php echo $mahasiswa['program_studi_nama']; ?>
+                    </div>
+                </div>
             </div>
 
             <!-- Academic Summary -->
@@ -141,8 +172,18 @@ foreach ($transkrip_data as $semester_grades) {
                                 <i class="fas fa-calculator"></i>
                             </div>
                             <div class="stat-content">
-                                <h4>Total SKS</h4>
+                                <h4>Total SKS Diambil</h4>
                                 <p><?php echo $total_sks; ?> SKS</p>
+                            </div>
+                        </div>
+
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h4>SKS Lulus</h4>
+                                <p><?php echo $total_sks_lulus; ?> SKS</p>
                             </div>
                         </div>
 
@@ -152,7 +193,7 @@ foreach ($transkrip_data as $semester_grades) {
                             </div>
                             <div class="stat-content">
                                 <h4>Semester Aktif</h4>
-                                <p>Semester 5</p>
+                                <p>Semester <?php echo $mahasiswa['semester']; ?></p>
                             </div>
                         </div>
 
@@ -162,17 +203,7 @@ foreach ($transkrip_data as $semester_grades) {
                             </div>
                             <div class="stat-content">
                                 <h4>Progress Studi</h4>
-                                <p><?php echo round(($total_sks / 144) * 100); ?>%</p>
-                            </div>
-                        </div>
-
-                        <div class="stat-item">
-                            <div class="stat-icon">
-                                <i class="fas fa-graduation-cap"></i>
-                            </div>
-                            <div class="stat-content">
-                                <h4>Perkiraan Lulus</h4>
-                                <p>2026</p>
+                                <p><?php echo round(($total_sks_lulus / 144) * 100); ?>%</p>
                             </div>
                         </div>
                     </div>
@@ -183,75 +214,88 @@ foreach ($transkrip_data as $semester_grades) {
             <div class="dashboard-section">
                 <h2><i class="fas fa-book-open"></i> Transkrip Per Semester</h2>
                 <div class="transcript-container">
-                    <div class="semester-tabs">
-                        <?php $i = 1; foreach ($transkrip_data as $semester => $grades): ?>
-                            <button class="tab-button <?php echo $i === 1 ? 'active' : ''; ?>" 
-                                    onclick="showSemester('semester<?php echo $i; ?>')">
-                                <?php echo $semester; ?>
-                            </button>
-                        <?php $i++; endforeach; ?>
-                    </div>
+                    <?php if (!empty($transkrip_data)): ?>
+                        <div class="semester-tabs">
+                            <?php $i = 1; foreach ($transkrip_data as $semester => $grades): ?>
+                                <button class="tab-button <?php echo $i === 1 ? 'active' : ''; ?>" 
+                                        onclick="showSemester('semester<?php echo $i; ?>')">
+                                    <?php echo $semester; ?>
+                                </button>
+                            <?php $i++; endforeach; ?>
+                        </div>
 
-                    <?php $i = 1; foreach ($transkrip_data as $semester => $grades): ?>
-                        <div id="semester<?php echo $i; ?>" class="semester-content <?php echo $i === 1 ? 'active' : ''; ?>">
-                            <div class="semester-header">
-                                <h3><?php echo $semester; ?></h3>
-                                <div class="semester-stats">
-                                    <span class="semester-gpa">
-                                        IPK: <?php echo calculateGPA($grades); ?>
-                                    </span>
-                                    <span class="semester-sks">
-                                        SKS: <?php echo array_sum(array_column($grades, 'sks')); ?>
-                                    </span>
+                        <?php $i = 1; foreach ($transkrip_data as $semester => $grades): ?>
+                            <div id="semester<?php echo $i; ?>" class="semester-content <?php echo $i === 1 ? 'active' : ''; ?>">
+                                <div class="semester-header">
+                                    <h3><?php echo $semester; ?></h3>
+                                    <div class="semester-stats">
+                                        <span class="semester-gpa">
+                                            IPK: <?php echo calculateGPA($grades); ?>
+                                        </span>
+                                        <span class="semester-sks">
+                                            SKS: <?php echo array_sum(array_column($grades, 'sks')); ?>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="grades-table-container">
+                                    <table class="grades-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Kode MK</th>
+                                                <th>Mata Kuliah</th>
+                                                <th>SKS</th>
+                                                <th>Nilai</th>
+                                                <th>Bobot</th>
+                                                <th>Mutu (SKS × Bobot)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($grades as $grade): ?>
+                                                <tr>
+                                                    <td>
+                                                        <span class="course-code"><?php echo $grade['kode']; ?></span>
+                                                    </td>
+                                                    <td><?php echo $grade['mata_kuliah']; ?></td>
+                                                    <td><?php echo $grade['sks']; ?></td>
+                                                    <td>
+                                                        <?php if ($grade['nilai'] !== 'Belum Ada'): ?>
+                                                            <span class="grade-badge grade-<?php echo strtolower(str_replace('+', 'plus', str_replace('-', 'minus', $grade['nilai']))); ?>">
+                                                                <?php echo $grade['nilai']; ?>
+                                                            </span>
+                                                        <?php else: ?>
+                                                            <span class="grade-badge grade-pending">Pending</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td><?php echo $grade['bobot']; ?></td>
+                                                    <td class="mutu-value"><?php echo $grade['nilai'] !== 'Belum Ada' ? $grade['sks'] * $grade['bobot'] : '-'; ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="summary-row">
+                                                <td colspan="2"><strong>Total</strong></td>
+                                                <td><strong><?php echo array_sum(array_column($grades, 'sks')); ?></strong></td>
+                                                <td colspan="2"><strong>IPK Semester</strong></td>
+                                                <td><strong><?php echo calculateGPA($grades); ?></strong></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
                                 </div>
                             </div>
-
-                            <div class="grades-table-container">
-                                <table class="grades-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Kode MK</th>
-                                            <th>Mata Kuliah</th>
-                                            <th>SKS</th>
-                                            <th>Nilai</th>
-                                            <th>Bobot</th>
-                                            <th>Mutu (SKS × Bobot)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($grades as $grade): ?>
-                                            <tr>
-                                                <td>
-                                                    <span class="course-code"><?php echo $grade['kode']; ?></span>
-                                                </td>
-                                                <td><?php echo $grade['mata_kuliah']; ?></td>
-                                                <td><?php echo $grade['sks']; ?></td>
-                                                <td>
-                                                    <span class="grade-badge grade-<?php echo strtolower(str_replace('+', 'plus', str_replace('-', 'minus', $grade['nilai']))); ?>">
-                                                        <?php echo $grade['nilai']; ?>
-                                                    </span>
-                                                </td>
-                                                <td><?php echo $grade['bobot']; ?></td>
-                                                <td class="mutu-value"><?php echo $grade['sks'] * $grade['bobot']; ?></td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                    <tfoot>
-                                        <tr class="summary-row">
-                                            <td colspan="2"><strong>Total</strong></td>
-                                            <td><strong><?php echo array_sum(array_column($grades, 'sks')); ?></strong></td>
-                                            <td colspan="2"><strong>IPK Semester</strong></td>
-                                            <td><strong><?php echo calculateGPA($grades); ?></strong></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
+                        <?php $i++; endforeach; ?>
+                    <?php else: ?>
+                        <div class="no-transcript">
+                            <i class="fas fa-chart-line"></i>
+                            <h3>Belum Ada Data Transkrip</h3>
+                            <p>Data nilai dan transkrip akan muncul setelah Anda mengambil mata kuliah dan dosen memasukkan nilai.</p>
                         </div>
-                    <?php $i++; endforeach; ?>
+                    <?php endif; ?>
                 </div>
             </div>
 
             <!-- Grade Analysis -->
+            <?php if (!empty($transkrip_data)): ?>
             <div class="dashboard-section">
                 <h2><i class="fas fa-chart-pie"></i> Analisis Nilai</h2>
                 <div class="grade-analysis">
@@ -262,38 +306,48 @@ foreach ($transkrip_data as $semester_grades) {
                             $all_grades = [];
                             foreach ($transkrip_data as $semester_grades) {
                                 foreach ($semester_grades as $grade) {
-                                    $all_grades[] = $grade['nilai'];
+                                    if ($grade['nilai'] !== 'Belum Ada') {
+                                        $all_grades[] = $grade['nilai'];
+                                    }
                                 }
                             }
-                            $grade_counts = array_count_values($all_grades);
-                            $total_courses = count($all_grades);
                             
-                            $grade_order = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'E'];
-                            foreach ($grade_order as $grade):
-                                if (isset($grade_counts[$grade])):
-                                    $percentage = ($grade_counts[$grade] / $total_courses) * 100;
+                            if (!empty($all_grades)):
+                                $grade_counts = array_count_values($all_grades);
+                                $total_courses = count($all_grades);
+                                
+                                $grade_order = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'E'];
+                                foreach ($grade_order as $grade):
+                                    if (isset($grade_counts[$grade])):
+                                        $percentage = ($grade_counts[$grade] / $total_courses) * 100;
                             ?>
-                                <div class="distribution-item">
-                                    <div class="distribution-label">
-                                        <span class="grade-badge grade-<?php echo strtolower(str_replace('+', 'plus', str_replace('-', 'minus', $grade))); ?>">
-                                            <?php echo $grade; ?>
-                                        </span>
-                                        <span><?php echo $grade_counts[$grade]; ?> mata kuliah</span>
-                                    </div>
-                                    <div class="distribution-bar">
-                                        <div class="bar-fill" style="width: <?php echo $percentage; ?>%"></div>
-                                    </div>
-                                    <span class="percentage"><?php echo round($percentage, 1); ?>%</span>
-                                </div>
+                                        <div class="distribution-item">
+                                            <div class="distribution-label">
+                                                <span class="grade-badge grade-<?php echo strtolower(str_replace('+', 'plus', str_replace('-', 'minus', $grade))); ?>">
+                                                    <?php echo $grade; ?>
+                                                </span>
+                                                <span><?php echo $grade_counts[$grade]; ?> mata kuliah</span>
+                                            </div>
+                                            <div class="distribution-bar">
+                                                <div class="bar-fill" style="width: <?php echo $percentage; ?>%"></div>
+                                            </div>
+                                            <span class="percentage"><?php echo round($percentage, 1); ?>%</span>
+                                        </div>
                             <?php 
-                                endif;
-                            endforeach; 
+                                    endif;
+                                endforeach;
+                            else: 
                             ?>
+                                <div class="no-grades">
+                                    <i class="fas fa-chart-bar"></i>
+                                    <p>Belum ada nilai yang tersedia untuk dianalisis.</p>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
 
                     <div class="gpa-trend">
-                        <h3>Trend IPK</h3>
+                        <h3>Trend IPK Per Semester</h3>
                         <div class="trend-chart">
                             <div class="trend-line">
                                 <?php 
@@ -301,11 +355,10 @@ foreach ($transkrip_data as $semester_grades) {
                                 foreach ($transkrip_data as $semester => $grades) {
                                     $semester_gpas[] = calculateGPA($grades);
                                 }
-                                $max_gpa = max($semester_gpas);
                                 ?>
                                 
                                 <?php foreach ($semester_gpas as $index => $gpa): ?>
-                                    <div class="trend-point" style="height: <?php echo ($gpa / 4) * 100; ?>%">
+                                    <div class="trend-point" style="height: <?php echo max(($gpa / 4) * 100, 10); ?>%">
                                         <span class="trend-value"><?php echo $gpa; ?></span>
                                         <span class="trend-label">Sem <?php echo $index + 1; ?></span>
                                     </div>
@@ -315,6 +368,7 @@ foreach ($transkrip_data as $semester_grades) {
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
 
             <!-- Action Buttons -->
             <div class="dashboard-section">
@@ -669,6 +723,31 @@ foreach ($transkrip_data as $semester_grades) {
             gap: 1rem;
             justify-content: center;
             padding: 2rem;
+        }
+
+        .grade-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .no-transcript {
+            text-align: center;
+            padding: 3rem;
+            color: #6b7280;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .no-transcript i {
+            font-size: 4rem;
+            color: #10b981;
+            margin-bottom: 1rem;
+        }
+
+        .no-transcript h3 {
+            margin: 0 0 1rem 0;
+            color: #374151;
         }
 
         @media (max-width: 768px) {

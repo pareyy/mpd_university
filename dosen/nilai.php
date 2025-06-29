@@ -13,28 +13,104 @@ require_once '../koneksi.php';
 
 // Get dosen information
 $user_id = $_SESSION['user_id'];
-$query = "SELECT * FROM users WHERE id = '$user_id'";
+$query = "SELECT u.*, d.id as dosen_id FROM users u 
+          LEFT JOIN dosen d ON u.id = d.user_id 
+          WHERE u.id = '$user_id'";
 $result = mysqli_query($conn, $query);
 $user = mysqli_fetch_assoc($result);
 
-// Sample data for nilai (in real application, this would come from database)
-$mata_kuliah_list = [
-    ['id' => 1, 'nama' => 'Pemrograman Web Lanjut', 'kelas' => 'A'],
-    ['id' => 2, 'nama' => 'Database', 'kelas' => 'B'],
-    ['id' => 3, 'nama' => 'Algoritma dan Struktur Data', 'kelas' => 'C']
-];
+$dosen_id = $user['dosen_id'];
 
-$mahasiswa_data = [
-    ['nim' => '2021001', 'nama' => 'Ahmad Rizki', 'tugas1' => 85, 'tugas2' => 78, 'uts' => 82, 'uas' => 88],
-    ['nim' => '2021002', 'nama' => 'Siti Aisyah', 'tugas1' => 92, 'tugas2' => 85, 'uts' => 89, 'uas' => 91],
-    ['nim' => '2021003', 'nama' => 'Budi Santoso', 'tugas1' => 78, 'tugas2' => 82, 'uts' => 75, 'uas' => 80],
-    ['nim' => '2021004', 'nama' => 'Dewi Lestari', 'tugas1' => 88, 'tugas2' => 90, 'uts' => 85, 'uas' => 87],
-    ['nim' => '2021005', 'nama' => 'Rendi Pratama', 'tugas1' => 75, 'tugas2' => 70, 'uts' => 78, 'uas' => 82]
-];
+if (!$dosen_id) {
+    die("Error: Data dosen tidak ditemukan.");
+}
 
-// Calculate final grade
+// Get mata kuliah list from database
+$mata_kuliah_query = "SELECT mk.id, mk.nama_mk, mk.kode_mk, j.kelas
+                      FROM mata_kuliah mk
+                      LEFT JOIN jadwal j ON mk.id = j.mata_kuliah_id
+                      WHERE mk.dosen_id = '$dosen_id'
+                      GROUP BY mk.id
+                      ORDER BY mk.nama_mk";
+$mata_kuliah_result = mysqli_query($conn, $mata_kuliah_query);
+$mata_kuliah_list = [];
+while ($row = mysqli_fetch_assoc($mata_kuliah_result)) {
+    $mata_kuliah_list[] = $row;
+}
+
+// Handle form submissions
+$message = '';
+$message_type = '';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    if (isset($_POST['action']) && $_POST['action'] == 'save_grades') {
+        $mata_kuliah_id = (int)$_POST['mata_kuliah_id'];
+        $grades_data = $_POST['grades'];
+        
+        foreach ($grades_data as $mahasiswa_id => $grades) {
+            $tugas1 = (float)$grades['tugas1'];
+            $tugas2 = (float)$grades['tugas2'];
+            $uts = (float)$grades['uts'];
+            $uas = (float)$grades['uas'];
+            
+            // Calculate final grade
+            $nilai_akhir = round(($tugas1 * 0.2) + ($tugas2 * 0.2) + ($uts * 0.3) + ($uas * 0.3), 2);
+            
+            // Determine grade letter
+            if ($nilai_akhir >= 85) $grade = 'A';
+            elseif ($nilai_akhir >= 70) $grade = 'B';
+            elseif ($nilai_akhir >= 60) $grade = 'C';
+            elseif ($nilai_akhir >= 50) $grade = 'D';
+            else $grade = 'E';
+            
+            // Insert or update nilai
+            $nilai_query = "INSERT INTO nilai (mata_kuliah_id, mahasiswa_id, tugas1, tugas2, uts, uas, nilai_akhir, grade, updated_at)
+                           VALUES ($mata_kuliah_id, $mahasiswa_id, $tugas1, $tugas2, $uts, $uas, $nilai_akhir, '$grade', NOW())
+                           ON DUPLICATE KEY UPDATE
+                           tugas1 = $tugas1, tugas2 = $tugas2, uts = $uts, uas = $uas,
+                           nilai_akhir = $nilai_akhir, grade = '$grade', updated_at = NOW()";
+            
+            mysqli_query($conn, $nilai_query);
+        }
+        
+        $message = "Nilai berhasil disimpan!";
+        $message_type = 'success';
+    }
+}
+
+// Get selected mata kuliah data
+$selected_mk_id = isset($_GET['mk_id']) ? (int)$_GET['mk_id'] : 0;
+$mahasiswa_data = [];
+$selected_mk_name = '';
+
+if ($selected_mk_id > 0) {
+    // Get mata kuliah name
+    $mk_name_query = "SELECT mk.nama_mk, mk.kode_mk, j.kelas 
+                      FROM mata_kuliah mk 
+                      LEFT JOIN jadwal j ON mk.id = j.mata_kuliah_id 
+                      WHERE mk.id = $selected_mk_id AND mk.dosen_id = '$dosen_id'";
+    $mk_name_result = mysqli_query($conn, $mk_name_query);
+    $mk_data = mysqli_fetch_assoc($mk_name_result);
+    $selected_mk_name = $mk_data ? $mk_data['nama_mk'] . ' - Kelas ' . ($mk_data['kelas'] ?? 'A') : '';
+    
+    // Get mahasiswa data with their grades
+    $mahasiswa_query = "SELECT m.id, m.nim, m.nama,
+                              n.tugas1, n.tugas2, n.uts, n.uas, n.nilai_akhir, n.grade
+                       FROM kelas k
+                       JOIN mahasiswa m ON k.mahasiswa_id = m.id
+                       LEFT JOIN nilai n ON k.mata_kuliah_id = n.mata_kuliah_id AND k.mahasiswa_id = n.mahasiswa_id
+                       WHERE k.mata_kuliah_id = $selected_mk_id
+                       ORDER BY m.nama";
+    $mahasiswa_result = mysqli_query($conn, $mahasiswa_query);
+    
+    while ($row = mysqli_fetch_assoc($mahasiswa_result)) {
+        $mahasiswa_data[] = $row;
+    }
+}
+
+// Calculate final grade function
 function hitungNilaiAkhir($tugas1, $tugas2, $uts, $uas) {
-    return round(($tugas1 * 0.2) + ($tugas2 * 0.2) + ($uts * 0.3) + ($uas * 0.3));
+    return round(($tugas1 * 0.2) + ($tugas2 * 0.2) + ($uts * 0.3) + ($uas * 0.3), 2);
 }
 
 function getGradeLetter($nilai) {
@@ -52,8 +128,8 @@ function getGradeLetter($nilai) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Input Nilai - MPD University</title>
     <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
-    <!-- Font Awesome CDN for icons -->
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    <link rel="stylesheet" href="../assets/css/dosen.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -66,104 +142,130 @@ function getGradeLetter($nilai) {
                 <p>Kelola dan input nilai mahasiswa</p>
             </div>
 
+            <!-- Alert Messages -->
+            <?php if ($message): ?>
+                <div class="alert alert-<?php echo $message_type; ?>">
+                    <i class="fas fa-check-circle"></i> <?php echo $message; ?>
+                </div>
+            <?php endif; ?>
+
             <!-- Filter Section -->
             <div class="dashboard-section">
                 <h2><i class="fas fa-filter"></i> Filter Mata Kuliah</h2>
                 <div class="filter-container">
-                    <select id="mata_kuliah_filter" class="form-control">
+                    <select id="mata_kuliah_filter" class="form-control" onchange="loadMahasiswa()">
                         <option value="">Pilih Mata Kuliah</option>
                         <?php foreach ($mata_kuliah_list as $mk): ?>
-                            <option value="<?php echo $mk['id']; ?>">
-                                <?php echo $mk['nama']; ?> - Kelas <?php echo $mk['kelas']; ?>
+                            <option value="<?php echo $mk['id']; ?>" 
+                                    <?php echo ($selected_mk_id == $mk['id']) ? 'selected' : ''; ?>>
+                                <?php echo $mk['kode_mk']; ?> - <?php echo $mk['nama_mk']; ?> 
+                                <?php echo $mk['kelas'] ? '- Kelas ' . $mk['kelas'] : ''; ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <button class="btn btn-primary" onclick="loadMahasiswa()">
-                        <i class="fas fa-search"></i> Tampilkan Data
-                    </button>
                 </div>
             </div>
 
             <!-- Grade Input Section -->
-            <div class="dashboard-section" id="grade-section" style="display: none;">
+            <?php if ($selected_mk_id > 0 && !empty($mahasiswa_data)): ?>
+            <div class="dashboard-section" id="grade-section">
                 <div class="section-header">
-                    <h2><i class="fas fa-edit"></i> Input Nilai - <span id="selected-course">Pemrograman Web Lanjut - Kelas A</span></h2>
-                    <button class="btn btn-success" onclick="saveAllGrades()">
-                        <i class="fas fa-save"></i> Simpan Semua Nilai
-                    </button>
+                    <h2><i class="fas fa-edit"></i> Input Nilai - <?php echo $selected_mk_name; ?></h2>
                 </div>
                 
-                <div class="grades-container">
-                    <div class="table-responsive">
-                        <table class="grades-table">
-                            <thead>
-                                <tr>
-                                    <th>NIM</th>
-                                    <th>Nama Mahasiswa</th>
-                                    <th>Tugas 1<br><small>(20%)</small></th>
-                                    <th>Tugas 2<br><small>(20%)</small></th>
-                                    <th>UTS<br><small>(30%)</small></th>
-                                    <th>UAS<br><small>(30%)</small></th>
-                                    <th>Nilai Akhir</th>
-                                    <th>Grade</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="grades-tbody">
-                                <?php foreach ($mahasiswa_data as $mhs): ?>
-                                    <?php 
-                                    $nilai_akhir = hitungNilaiAkhir($mhs['tugas1'], $mhs['tugas2'], $mhs['uts'], $mhs['uas']);
-                                    $grade = getGradeLetter($nilai_akhir);
-                                    $status = $nilai_akhir >= 60 ? 'Lulus' : 'Tidak Lulus';
-                                    ?>
+                <form method="POST" id="gradesForm">
+                    <input type="hidden" name="action" value="save_grades">
+                    <input type="hidden" name="mata_kuliah_id" value="<?php echo $selected_mk_id; ?>">
+                    
+                    <div class="grades-container">
+                        <div class="table-responsive">
+                            <table class="grades-table">
+                                <thead>
                                     <tr>
-                                        <td><?php echo $mhs['nim']; ?></td>
-                                        <td><?php echo $mhs['nama']; ?></td>
-                                        <td>
-                                            <input type="number" class="grade-input" 
-                                                   value="<?php echo $mhs['tugas1']; ?>" 
-                                                   min="0" max="100" 
-                                                   onchange="calculateFinalGrade(this)">
-                                        </td>
-                                        <td>
-                                            <input type="number" class="grade-input" 
-                                                   value="<?php echo $mhs['tugas2']; ?>" 
-                                                   min="0" max="100" 
-                                                   onchange="calculateFinalGrade(this)">
-                                        </td>
-                                        <td>
-                                            <input type="number" class="grade-input" 
-                                                   value="<?php echo $mhs['uts']; ?>" 
-                                                   min="0" max="100" 
-                                                   onchange="calculateFinalGrade(this)">
-                                        </td>
-                                        <td>
-                                            <input type="number" class="grade-input" 
-                                                   value="<?php echo $mhs['uas']; ?>" 
-                                                   min="0" max="100" 
-                                                   onchange="calculateFinalGrade(this)">
-                                        </td>
-                                        <td class="final-grade"><?php echo $nilai_akhir; ?></td>
-                                        <td>
-                                            <span class="grade-badge grade-<?php echo strtolower($grade); ?>">
-                                                <?php echo $grade; ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="status-badge <?php echo $nilai_akhir >= 60 ? 'status-pass' : 'status-fail'; ?>">
-                                                <?php echo $status; ?>
-                                            </span>
-                                        </td>
+                                        <th>NIM</th>
+                                        <th>Nama Mahasiswa</th>
+                                        <th>Tugas 1<br><small>(20%)</small></th>
+                                        <th>Tugas 2<br><small>(20%)</small></th>
+                                        <th>UTS<br><small>(30%)</small></th>
+                                        <th>UAS<br><small>(30%)</small></th>
+                                        <th>Nilai Akhir</th>
+                                        <th>Grade</th>
+                                        <th>Status</th>
                                     </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($mahasiswa_data as $mhs): ?>
+                                        <?php 
+                                        $tugas1 = $mhs['tugas1'] ?? 0;
+                                        $tugas2 = $mhs['tugas2'] ?? 0;
+                                        $uts = $mhs['uts'] ?? 0;
+                                        $uas = $mhs['uas'] ?? 0;
+                                        $nilai_akhir = $mhs['nilai_akhir'] ?? hitungNilaiAkhir($tugas1, $tugas2, $uts, $uas);
+                                        $grade = $mhs['grade'] ?? getGradeLetter($nilai_akhir);
+                                        $status = $nilai_akhir >= 60 ? 'Lulus' : 'Tidak Lulus';
+                                        ?>
+                                        <tr>
+                                            <td><?php echo $mhs['nim']; ?></td>
+                                            <td><?php echo $mhs['nama']; ?></td>
+                                            <td>
+                                                <input type="number" class="grade-input" 
+                                                       name="grades[<?php echo $mhs['id']; ?>][tugas1]"
+                                                       value="<?php echo $tugas1; ?>" 
+                                                       min="0" max="100" step="0.01"
+                                                       onchange="calculateFinalGrade(this)">
+                                            </td>
+                                            <td>
+                                                <input type="number" class="grade-input" 
+                                                       name="grades[<?php echo $mhs['id']; ?>][tugas2]"
+                                                       value="<?php echo $tugas2; ?>" 
+                                                       min="0" max="100" step="0.01"
+                                                       onchange="calculateFinalGrade(this)">
+                                            </td>
+                                            <td>
+                                                <input type="number" class="grade-input" 
+                                                       name="grades[<?php echo $mhs['id']; ?>][uts]"
+                                                       value="<?php echo $uts; ?>" 
+                                                       min="0" max="100" step="0.01"
+                                                       onchange="calculateFinalGrade(this)">
+                                            </td>
+                                            <td>
+                                                <input type="number" class="grade-input" 
+                                                       name="grades[<?php echo $mhs['id']; ?>][uas]"
+                                                       value="<?php echo $uas; ?>" 
+                                                       min="0" max="100" step="0.01"
+                                                       onchange="calculateFinalGrade(this)">
+                                            </td>
+                                            <td class="final-grade"><?php echo $nilai_akhir; ?></td>
+                                            <td>
+                                                <span class="grade-badge grade-<?php echo strtolower($grade); ?>">
+                                                    <?php echo $grade; ?>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge <?php echo $nilai_akhir >= 60 ? 'status-pass' : 'status-fail'; ?>">
+                                                    <?php echo $status; ?>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Simpan Semua Nilai
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                                <i class="fas fa-undo"></i> Reset
+                            </button>
+                        </div>
                     </div>
-                </div>
+                </form>
             </div>
 
             <!-- Grade Statistics -->
-            <div class="dashboard-section" id="stats-section" style="display: none;">
+            <div class="dashboard-section" id="stats-section">
                 <h2><i class="fas fa-chart-pie"></i> Statistik Nilai</h2>
                 <div class="stats-grid">
                     <div class="stat-card">
@@ -172,7 +274,7 @@ function getGradeLetter($nilai) {
                         </div>
                         <div class="stat-info">
                             <h3>Total Mahasiswa</h3>
-                            <p class="stat-number" id="total-students"><?php echo count($mahasiswa_data); ?></p>
+                            <p class="stat-number"><?php echo count($mahasiswa_data); ?></p>
                         </div>
                     </div>
 
@@ -182,11 +284,11 @@ function getGradeLetter($nilai) {
                         </div>
                         <div class="stat-info">
                             <h3>Lulus</h3>
-                            <p class="stat-number" id="pass-count">
+                            <p class="stat-number">
                                 <?php 
                                 $lulus = 0;
                                 foreach ($mahasiswa_data as $mhs) {
-                                    $nilai = hitungNilaiAkhir($mhs['tugas1'], $mhs['tugas2'], $mhs['uts'], $mhs['uas']);
+                                    $nilai = $mhs['nilai_akhir'] ?? 0;
                                     if ($nilai >= 60) $lulus++;
                                 }
                                 echo $lulus;
@@ -201,9 +303,7 @@ function getGradeLetter($nilai) {
                         </div>
                         <div class="stat-info">
                             <h3>Tidak Lulus</h3>
-                            <p class="stat-number" id="fail-count">
-                                <?php echo count($mahasiswa_data) - $lulus; ?>
-                            </p>
+                            <p class="stat-number"><?php echo count($mahasiswa_data) - $lulus; ?></p>
                         </div>
                     </div>
 
@@ -213,49 +313,24 @@ function getGradeLetter($nilai) {
                         </div>
                         <div class="stat-info">
                             <h3>Rata-rata Nilai</h3>
-                            <p class="stat-number" id="average-grade">
+                            <p class="stat-number">
                                 <?php 
-                                $total = 0;
-                                foreach ($mahasiswa_data as $mhs) {
-                                    $total += hitungNilaiAkhir($mhs['tugas1'], $mhs['tugas2'], $mhs['uts'], $mhs['uas']);
+                                if (count($mahasiswa_data) > 0) {
+                                    $total = 0;
+                                    foreach ($mahasiswa_data as $mhs) {
+                                        $total += $mhs['nilai_akhir'] ?? 0;
+                                    }
+                                    echo round($total / count($mahasiswa_data), 1);
+                                } else {
+                                    echo "0";
                                 }
-                                echo round($total / count($mahasiswa_data), 1);
                                 ?>
                             </p>
                         </div>
                     </div>
                 </div>
-
-                <!-- Grade Distribution -->
-                <div class="grade-distribution">
-                    <h3>Distribusi Grade</h3>
-                    <div class="grade-bars">
-                        <?php
-                        $grade_count = ['A' => 0, 'B' => 0, 'C' => 0, 'D' => 0, 'E' => 0];
-                        foreach ($mahasiswa_data as $mhs) {
-                            $nilai = hitungNilaiAkhir($mhs['tugas1'], $mhs['tugas2'], $mhs['uts'], $mhs['uas']);
-                            $grade = getGradeLetter($nilai);
-                            $grade_count[$grade]++;
-                        }
-                        
-                        foreach ($grade_count as $grade => $count):
-                            $percentage = ($count / count($mahasiswa_data)) * 100;
-                        ?>
-                            <div class="grade-bar">
-                                <div class="grade-label">
-                                    <span class="grade-badge grade-<?php echo strtolower($grade); ?>"><?php echo $grade; ?></span>
-                                    <span><?php echo $count; ?> mahasiswa</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill grade-<?php echo strtolower($grade); ?>" 
-                                         style="width: <?php echo $percentage; ?>%"></div>
-                                </div>
-                                <span class="percentage"><?php echo round($percentage, 1); ?>%</span>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
             </div>
+            <?php endif; ?>
         </div>
     </main>
 
@@ -264,18 +339,10 @@ function getGradeLetter($nilai) {
     <script>
         function loadMahasiswa() {
             const selectedCourse = document.getElementById('mata_kuliah_filter').value;
-            const gradeSection = document.getElementById('grade-section');
-            const statsSection = document.getElementById('stats-section');
-            
             if (selectedCourse) {
-                gradeSection.style.display = 'block';
-                statsSection.style.display = 'block';
-                // Update course name in the header
-                const courseName = document.getElementById('mata_kuliah_filter').selectedOptions[0].text;
-                document.getElementById('selected-course').textContent = courseName;
+                window.location.href = 'nilai.php?mk_id=' + selectedCourse;
             } else {
-                gradeSection.style.display = 'none';
-                statsSection.style.display = 'none';
+                window.location.href = 'nilai.php';
             }
         }
 
@@ -288,7 +355,7 @@ function getGradeLetter($nilai) {
             const uts = parseFloat(grades[2].value) || 0;
             const uas = parseFloat(grades[3].value) || 0;
             
-            const finalGrade = Math.round((tugas1 * 0.2) + (tugas2 * 0.2) + (uts * 0.3) + (uas * 0.3));
+            const finalGrade = Math.round((tugas1 * 0.2) + (tugas2 * 0.2) + (uts * 0.3) + (uas * 0.3) * 100) / 100;
             
             row.querySelector('.final-grade').textContent = finalGrade;
             
@@ -311,206 +378,11 @@ function getGradeLetter($nilai) {
             statusBadge.className = `status-badge ${finalGrade >= 60 ? 'status-pass' : 'status-fail'}`;
         }
 
-        function saveAllGrades() {
-            // Implement save functionality
-            alert('Nilai berhasil disimpan!');
+        function resetForm() {
+            if (confirm('Apakah Anda yakin ingin mereset semua nilai?')) {
+                document.getElementById('gradesForm').reset();
+            }
         }
     </script>
-
-    <style>
-        .filter-container {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            display: flex;
-            gap: 1rem;
-            align-items: end;
-        }
-
-        .filter-container .form-control {
-            flex: 1;
-            max-width: 400px;
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .section-header h2 {
-            flex: 1;
-            margin: 0;
-        }
-
-        .grades-container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-        }
-
-        .table-responsive {
-            overflow-x: auto;
-        }
-
-        .grades-table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 800px;
-        }
-
-        .grades-table th,
-        .grades-table td {
-            padding: 1rem;
-            text-align: center;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .grades-table th {
-            background: #f8fafc;
-            font-weight: 600;
-            color: #374151;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        .grades-table th small {
-            color: #6b7280;
-            font-weight: 400;
-        }
-
-        .grade-input {
-            width: 80px;
-            padding: 0.5rem;
-            border: 2px solid #e5e7eb;
-            border-radius: 6px;
-            text-align: center;
-            font-weight: 600;
-        }
-
-        .grade-input:focus {
-            outline: none;
-            border-color: #2563eb;
-        }
-
-        .final-grade {
-            font-weight: 700;
-            font-size: 1.1rem;
-            color: #2563eb;
-        }
-
-        .grade-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 0.875rem;
-        }
-
-        .grade-a { background: #d1fae5; color: #065f46; }
-        .grade-b { background: #dbeafe; color: #1e40af; }
-        .grade-c { background: #fef3c7; color: #92400e; }
-        .grade-d { background: #fed7aa; color: #ea580c; }
-        .grade-e { background: #fee2e2; color: #dc2626; }
-
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 0.875rem;
-        }
-
-        .status-pass {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .status-fail {
-            background: #fee2e2;
-            color: #dc2626;
-        }
-
-        .grade-distribution {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            margin-top: 2rem;
-        }
-
-        .grade-distribution h3 {
-            margin: 0 0 1.5rem 0;
-            color: #374151;
-        }
-
-        .grade-bars {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .grade-bar {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .grade-label {
-            min-width: 150px;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .progress-bar {
-            flex: 1;
-            height: 20px;
-            background: #f3f4f6;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            transition: width 0.3s ease;
-        }
-
-        .progress-fill.grade-a { background: #10b981; }
-        .progress-fill.grade-b { background: #3b82f6; }
-        .progress-fill.grade-c { background: #f59e0b; }
-        .progress-fill.grade-d { background: #f97316; }
-        .progress-fill.grade-e { background: #ef4444; }
-
-        .percentage {
-            min-width: 60px;
-            text-align: right;
-            font-weight: 600;
-            color: #374151;
-        }
-
-        @media (max-width: 768px) {
-            .filter-container {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .section-header {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 1rem;
-            }
-            
-            .grades-table {
-                font-size: 0.875rem;
-            }
-            
-            .grade-input {
-                width: 60px;
-            }
-        }
-    </style>
 </body>
 </html>

@@ -46,9 +46,13 @@ function getAvatarUrl($photo_name) {
     return isset($vector_avatars[$photo_name]) ? $vector_avatars[$photo_name] : $vector_avatars['avatar-1.svg'];
 }
 
-// Get dosen information
+// Get dosen information from unified database
 $user_id = $_SESSION['user_id'];
-$query = "SELECT * FROM users WHERE id = '$user_id'";
+$query = "SELECT u.*, d.nidn, d.bidang_keahlian, f.nama as fakultas_nama 
+          FROM users u 
+          LEFT JOIN dosen d ON u.id = d.user_id 
+          LEFT JOIN fakultas f ON d.fakultas_id = f.id 
+          WHERE u.id = '$user_id'";
 $result = mysqli_query($conn, $query);
 $user = mysqli_fetch_assoc($result);
 
@@ -63,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $phone = mysqli_real_escape_string($conn, $_POST['phone']);
             $alamat = mysqli_real_escape_string($conn, $_POST['alamat']);
             
+            // Update users table
             $update_query = "UPDATE users SET 
                            username = '$username',
                            email = '$email',
@@ -73,6 +78,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                            WHERE id = '$user_id'";
             
             if (mysqli_query($conn, $update_query)) {
+                // Update dosen table if exists
+                $dosen_update = "UPDATE dosen SET 
+                               nama = '$full_name',
+                               email = '$email',
+                               phone = '$phone',
+                               alamat = '$alamat'
+                               WHERE user_id = '$user_id'";
+                mysqli_query($conn, $dosen_update);
+                
                 $success_message = "Profil berhasil diperbarui!";
                 // Refresh user data
                 $result = mysqli_query($conn, $query);
@@ -81,7 +95,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $error_message = "Error: " . mysqli_error($conn);
             }
         }
-          if ($_POST['action'] == 'change_password') {
+        
+        if ($_POST['action'] == 'change_password') {
             $current_password = $_POST['current_password'];
             $new_password = $_POST['new_password'];
             $confirm_password = $_POST['confirm_password'];
@@ -121,6 +136,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 }
+
+// Get teaching load statistics from database
+$stats_query = "SELECT 
+                  COUNT(DISTINCT mk.id) as total_mk,
+                  COUNT(DISTINCT k.mahasiswa_id) as total_mahasiswa,
+                  COUNT(DISTINCT j.id) as total_jadwal
+                FROM mata_kuliah mk
+                LEFT JOIN kelas k ON mk.id = k.mata_kuliah_id
+                LEFT JOIN jadwal j ON mk.id = j.mata_kuliah_id
+                WHERE mk.dosen_id = (SELECT id FROM dosen WHERE user_id = '$user_id')";
+$stats_result = mysqli_query($conn, $stats_query);
+$stats = mysqli_fetch_assoc($stats_result);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -129,8 +156,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profil Dosen - MPD University</title>
     <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
-    <!-- Font Awesome CDN for icons -->
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    <link rel="stylesheet" href="../assets/css/dosen.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -159,7 +186,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <div class="profile-layout">
                 <!-- Profile Sidebar -->
                 <div class="profile-sidebar">
-                    <div class="profile-card">                        <div class="profile-avatar">
+                    <div class="profile-card">
+                        <div class="profile-avatar">
                             <img src="<?php echo getAvatarUrl($user['profile_photo'] ?? 'avatar-1.svg'); ?>" alt="Profile Picture" id="profileImage">
                             <button class="change-photo-btn" onclick="openPhotoModal()">
                                 <i class="fas fa-camera"></i>
@@ -171,21 +199,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <i class="fas fa-chalkboard-teacher"></i> Dosen
                             </p>
                             <p class="profile-nip">
-                                <i class="fas fa-id-card"></i> NIP: <?php echo htmlspecialchars($user['nip'] ?? '-'); ?>
+                                <i class="fas fa-id-card"></i> NIP: <?php echo htmlspecialchars($user['nip'] ?? $user['nidn'] ?? '-'); ?>
                             </p>
+                            <?php if ($user['fakultas_nama']): ?>
+                            <p class="profile-faculty">
+                                <i class="fas fa-university"></i> <?php echo htmlspecialchars($user['fakultas_nama']); ?>
+                            </p>
+                            <?php endif; ?>
                         </div>
                         <div class="profile-stats">
                             <div class="stat-item">
-                                <span class="stat-number">5</span>
+                                <span class="stat-number"><?php echo $stats['total_mk'] ?: 0; ?></span>
                                 <span class="stat-label">Mata Kuliah</span>
                             </div>
                             <div class="stat-item">
-                                <span class="stat-number">125</span>
+                                <span class="stat-number"><?php echo $stats['total_mahasiswa'] ?: 0; ?></span>
                                 <span class="stat-label">Mahasiswa</span>
                             </div>
                             <div class="stat-item">
-                                <span class="stat-number">3</span>
-                                <span class="stat-label">Tahun Mengajar</span>
+                                <span class="stat-number"><?php echo $stats['total_jadwal'] ?: 0; ?></span>
+                                <span class="stat-label">Jadwal</span>
                             </div>
                         </div>
                     </div>
@@ -213,58 +246,58 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </button>
                         </div>
 
-                        <div class="form-container">
+                        <div class="form-container form-spacious">
                             <form method="POST" action="" id="profileForm">
                                 <input type="hidden" name="action" value="update_profile">
                                 
-                                <div class="form-row">
-                                    <div class="form-group">
+                                <div class="form-row form-row-enhanced">
+                                    <div class="form-group form-group-enhanced">
                                         <label for="username">Username</label>
                                         <input type="text" id="username" name="username" class="form-control" 
                                                value="<?php echo htmlspecialchars($user['username']); ?>" readonly>
                                     </div>
                                     
-                                    <div class="form-group">
+                                    <div class="form-group form-group-enhanced">
                                         <label for="email">Email</label>
                                         <input type="email" id="email" name="email" class="form-control" 
                                                value="<?php echo htmlspecialchars($user['email'] ?? ''); ?>" readonly>
                                     </div>
                                 </div>
                                 
-                                <div class="form-row">
-                                    <div class="form-group">
+                                <div class="form-row form-row-enhanced">
+                                    <div class="form-group form-group-enhanced">
                                         <label for="full_name">Nama Lengkap</label>
                                         <input type="text" id="full_name" name="full_name" class="form-control" 
                                                value="<?php echo htmlspecialchars($user['full_name'] ?? ''); ?>" readonly>
                                     </div>
                                     
-                                    <div class="form-group">
-                                        <label for="nip">NIP</label>
+                                    <div class="form-group form-group-enhanced">
+                                        <label for="nip">NIP/NIDN</label>
                                         <input type="text" id="nip" name="nip" class="form-control" 
-                                               value="<?php echo htmlspecialchars($user['nip'] ?? ''); ?>" readonly>
+                                               value="<?php echo htmlspecialchars($user['nip'] ?? $user['nidn'] ?? ''); ?>" readonly>
                                     </div>
                                 </div>
                                 
-                                <div class="form-row">
-                                    <div class="form-group">
+                                <div class="form-row form-row-enhanced">
+                                    <div class="form-group form-group-enhanced">
                                         <label for="phone">Nomor Telepon</label>
                                         <input type="tel" id="phone" name="phone" class="form-control" 
                                                value="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>" readonly>
                                     </div>
                                     
-                                    <div class="form-group">
-                                        <label for="role">Role</label>
+                                    <div class="form-group form-group-enhanced">
+                                        <label for="bidang_keahlian">Bidang Keahlian</label>
                                         <input type="text" class="form-control" 
-                                               value="Dosen" readonly disabled>
+                                               value="<?php echo htmlspecialchars($user['bidang_keahlian'] ?? 'Belum diisi'); ?>" readonly disabled>
                                     </div>
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group form-group-enhanced">
                                     <label for="alamat">Alamat</label>
-                                    <textarea id="alamat" name="alamat" class="form-control" rows="3" readonly><?php echo htmlspecialchars($user['alamat'] ?? ''); ?></textarea>
+                                    <textarea id="alamat" name="alamat" class="form-control" rows="4" readonly><?php echo htmlspecialchars($user['alamat'] ?? ''); ?></textarea>
                                 </div>
                                 
-                                <div class="form-actions" id="profileActions" style="display: none;">
+                                <div class="form-actions form-actions-enhanced" id="profileActions" style="display: none;">
                                     <button type="submit" class="btn btn-primary">
                                         <i class="fas fa-save"></i> Simpan Perubahan
                                     </button>
@@ -282,22 +315,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <h2><i class="fas fa-lock"></i> Ubah Password</h2>
                         </div>
 
-                        <div class="form-container">
+                        <div class="form-container form-spacious">
                             <form method="POST" action="" id="passwordForm">
                                 <input type="hidden" name="action" value="change_password">
                                 
-                                <div class="form-group">
+                                <div class="form-group form-group-enhanced">
                                     <label for="current_password">Password Saat Ini</label>
                                     <input type="password" id="current_password" name="current_password" class="form-control" required>
                                 </div>
                                 
-                                <div class="form-row">
-                                    <div class="form-group">
+                                <div class="form-row form-row-enhanced">
+                                    <div class="form-group form-group-enhanced">
                                         <label for="new_password">Password Baru</label>
                                         <input type="password" id="new_password" name="new_password" class="form-control" required>
                                     </div>
                                     
-                                    <div class="form-group">
+                                    <div class="form-group form-group-enhanced">
                                         <label for="confirm_password">Konfirmasi Password Baru</label>
                                         <input type="password" id="confirm_password" name="confirm_password" class="form-control" required>
                                     </div>
@@ -313,9 +346,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     </ul>
                                 </div>
                                 
-                                <button type="submit" class="btn btn-warning">
-                                    <i class="fas fa-key"></i> Ubah Password
-                                </button>
+                                <div class="form-actions form-actions-enhanced">
+                                    <button type="submit" class="btn btn-warning">
+                                        <i class="fas fa-key"></i> Ubah Password
+                                    </button>
+                                </div>
                             </form>
                         </div>
                     </div>
@@ -398,550 +433,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         });
     </script>
-
-    <style>
-        .profile-layout {
-            display: grid;
-            grid-template-columns: 350px 1fr;
-            gap: 2rem;
-            align-items: start;
-        }
-
-        .profile-sidebar {
-            position: sticky;
-            top: 2rem;
-        }
-
-        .profile-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            padding: 2rem;
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .profile-avatar {
-            position: relative;
-            display: inline-block;
-            margin-bottom: 1rem;
-        }
-
-        .profile-avatar img {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 4px solid #e5e7eb;
-        }
-
-        .change-photo-btn {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: background 0.3s ease;
-        }
-
-        .change-photo-btn:hover {
-            background: #1d4ed8;
-        }
-
-        .profile-info h3 {
-            margin: 0 0 0.5rem 0;
-            color: #374151;
-            font-size: 1.5rem;
-        }
-
-        .profile-role, .profile-nip {
-            color: #6b7280;
-            margin: 0.25rem 0;
-            font-size: 0.875rem;
-        }
-
-        .profile-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
-            margin-top: 1.5rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid #e5e7eb;
-        }
-
-        .stat-item {
-            text-align: center;
-        }
-
-        .stat-number {
-            display: block;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #2563eb;
-        }
-
-        .stat-label {
-            display: block;
-            font-size: 0.75rem;
-            color: #6b7280;
-            margin-top: 0.25rem;
-        }
-
-        .quick-actions-sidebar {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            padding: 1.5rem;
-        }
-
-        .quick-actions-sidebar h4 {
-            margin: 0 0 1rem 0;
-            color: #374151;
-            font-size: 1rem;
-        }
-
-        .quick-actions-sidebar ul {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-        }
-
-        .quick-actions-sidebar li {
-            margin-bottom: 0.5rem;
-        }
-
-        .quick-actions-sidebar a {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: #6b7280;
-            text-decoration: none;
-            padding: 0.5rem;
-            border-radius: 6px;
-            transition: all 0.3s ease;
-            font-size: 0.875rem;
-        }
-
-        .quick-actions-sidebar a:hover {
-            background: #f3f4f6;
-            color: #2563eb;
-        }
-
-        .profile-content {
-            display: flex;
-            flex-direction: column;
-            gap: 2rem;
-        }
-
-        .content-section {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-        }
-
-        .section-header {
-            background: #f8fafc;
-            padding: 1.5rem;
-            border-bottom: 1px solid #e5e7eb;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .section-header h2 {
-            margin: 0;
-            color: #374151;
-            font-size: 1.25rem;
-        }
-
-        .form-container, .info-container {
-            padding: 2rem;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            align-items: end;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-        }
-
-        .form-group.full-width {
-            grid-column: 1 / -1;
-        }
-
-        .form-group label {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: #374151;
-            font-size: 0.9rem;
-            text-align: left;
-            display: block;
-        }
-
-        /* Ensure all form controls have exact same dimensions */
-        input.form-control,
-        select.form-control,
-        textarea.form-control {
-            width: 100%;
-            padding: 0.875rem;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.3s ease;
-            box-sizing: border-box;
-            background: white;
-        }
-
-        input.form-control,
-        select.form-control {
-            height: 48px !important;
-            padding: 0.875rem !important;
-            box-sizing: border-box !important;
-            border: 2px solid #e5e7eb !important;
-            border-radius: 8px !important;
-            width: 100% !important;
-            font-size: 1rem !important;
-            line-height: 1.2 !important;
-            vertical-align: top;
-        }
-
-        textarea.form-control {
-            height: auto !important;
-            min-height: 80px;
-            resize: vertical;
-            padding: 0.875rem !important;
-        }
-
-        select.form-control {
-            padding-right: 2.5rem !important;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-            background-position: right 0.75rem center;
-            background-repeat: no-repeat;
-            background-size: 1.5em 1.5em;
-            background-color: white;
-        }
-
-        .form-control[readonly] {
-            background: #f9fafb;
-            color: #6b7280;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        /* Mobile responsive */
-        @media (max-width: 1024px) {
-            .dashboard-container {
-                padding: 1rem;
-            }
-            
-            .profile-layout {
-                grid-template-columns: 1fr;
-                gap: 1.5rem;
-            }
-            
-            .profile-sidebar {
-                position: static;
-            }
-            
-            .profile-card {
-                padding: 1.5rem;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .dashboard-container {
-                padding: 0.5rem;
-                margin: 0;
-            }
-            
-            .dashboard-header {
-                padding: 1rem;
-                margin-bottom: 1.5rem;
-            }
-            
-            .dashboard-header h1 {
-                font-size: 1.5rem;
-            }
-            
-            .dashboard-section {
-                margin-bottom: 1.5rem;
-            }
-            
-            .dashboard-section h2 {
-                font-size: 1.25rem;
-                padding: 0 0.5rem;
-            }
-
-            .profile-layout {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-                padding: 0 0.5rem;
-            }
-
-            .profile-card {
-                padding: 1rem;
-                margin-bottom: 1rem;
-            }
-
-            .profile-avatar img {
-                width: 100px;
-                height: 100px;
-            }
-
-            .change-photo-btn {
-                width: 35px;
-                height: 35px;
-                font-size: 0.9rem;
-            }
-
-            .profile-content {
-                margin: 0;
-            }
-
-            .form-container {
-                padding: 1rem;
-                margin-bottom: 1rem;
-                border-radius: 8px;
-            }
-
-            .section-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 1rem;
-                margin-bottom: 1rem;
-                padding: 0 0.5rem;
-            }
-
-            .section-header h2 {
-                font-size: 1.1rem;
-                margin: 0;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-                align-items: stretch;
-            }
-
-            .form-control {
-                padding: 1rem;
-                font-size: 1rem;
-                border-radius: 10px;
-                height: 52px;
-                width: 100%;
-                box-sizing: border-box;
-            }
-
-            textarea.form-control {
-                height: auto;
-                min-height: 100px;
-                padding: 1rem;
-            }
-
-            .form-actions {
-                flex-direction: column;
-                gap: 0.75rem;
-                margin-top: 1rem;
-            }
-            
-            .btn {
-                padding: 1rem;
-                font-size: 1rem;
-                min-height: 48px;
-                border-radius: 10px;
-                justify-content: center;
-                touch-action: manipulation;
-            }
-
-            .quick-links {
-                padding: 1rem;
-            }
-
-            .quick-links ul {
-                gap: 0.5rem;
-            }
-
-            .quick-links a {
-                padding: 0.75rem 1rem;
-                border-radius: 8px;
-                font-size: 0.9rem;
-                min-height: 44px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-
-            .teaching-load {
-                padding: 1rem;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-                gap: 0.75rem;
-            }
-
-            .stat-item {
-                padding: 1rem;
-            }
-
-            .stat-value {
-                font-size: 1.5rem;
-            }
-
-            .alert {
-                margin: 0 0.5rem 1.5rem 0.5rem;
-                padding: 1rem;
-                border-radius: 8px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .dashboard-container {
-                padding: 0.25rem;
-            }
-            
-            .dashboard-header {
-                padding: 0.75rem;
-                margin-bottom: 1rem;
-            }
-            
-            .dashboard-header h1 {
-                font-size: 1.25rem;
-            }
-            
-            .dashboard-section h2 {
-                font-size: 1.1rem;
-                padding: 0 0.25rem;
-            }
-
-            .profile-layout {
-                padding: 0 0.25rem;
-            }
-
-            .profile-card {
-                padding: 0.75rem;
-            }
-
-            .profile-avatar img {
-                width: 80px;
-                height: 80px;
-            }
-
-            .change-photo-btn {
-                width: 30px;
-                height: 30px;
-                font-size: 0.8rem;
-            }
-
-            .form-container {
-                padding: 0.75rem;
-            }
-
-            .section-header {
-                padding: 0 0.25rem;
-            }
-
-            .section-header h2 {
-                font-size: 1rem;
-            }
-
-            .form-control {
-                padding: 0.875rem;
-                height: 48px;
-            }
-
-            textarea.form-control {
-                min-height: 80px;
-                padding: 0.875rem;
-            }
-            
-            .btn {
-                padding: 0.875rem;
-                font-size: 0.9rem;
-            }
-
-            .quick-links {
-                padding: 0.75rem;
-            }
-
-            .quick-links a {
-                padding: 0.625rem 0.75rem;
-                font-size: 0.85rem;
-                min-height: 40px;
-            }
-
-            .teaching-load {
-                padding: 0.75rem;
-            }
-
-            .stat-item {
-                padding: 0.75rem;
-            }
-
-            .stat-value {
-                font-size: 1.25rem;
-            }
-
-            .alert {
-                margin: 0 0.25rem 1rem 0.25rem;
-                padding: 0.75rem;
-                font-size: 0.9rem;
-            }
-        }
-
-        /* Landscape orientation */
-        @media (max-width: 768px) and (orientation: landscape) {
-            .form-row {
-                grid-template-columns: 1fr 1fr;
-                gap: 0.75rem;
-            }
-            
-            .form-actions {
-                flex-direction: row;
-                gap: 1rem;
-            }
-
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        /* Touch improvements */
-        @media (hover: none) and (pointer: coarse) {
-            .profile-card:hover {
-                transform: none;
-            }
-            
-            .profile-card:active {
-                transform: scale(0.98);
-            }
-            
-            .form-control:focus {
-                border-color: #667eea;
-                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-            }        }
-    </style>
 
     <!-- Photo Selection Modal -->
     <div id="photoModal" class="photo-modal">

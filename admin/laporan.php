@@ -17,31 +17,77 @@ $query = "SELECT * FROM users WHERE id = '$user_id'";
 $result = mysqli_query($conn, $query);
 $user = mysqli_fetch_assoc($result);
 
-// Sample statistics for reports
-$statistics = [
-    'total_mahasiswa' => 150,
-    'total_dosen' => 25,
-    'total_mata_kuliah' => 35,
-    'total_artikel' => 12,
-    'mahasiswa_aktif' => 142,
-    'mahasiswa_cuti' => 8,
-    'dosen_aktif' => 23,
-    'dosen_cuti' => 2
-];
+// Real statistics from database
+$statistics_query = "SELECT 
+    (SELECT COUNT(*) FROM mahasiswa) as total_mahasiswa,
+    (SELECT COUNT(*) FROM dosen) as total_dosen,
+    (SELECT COUNT(*) FROM mata_kuliah) as total_mata_kuliah,
+    (SELECT COUNT(*) FROM articles WHERE status = 'published') as total_artikel,
+    (SELECT COUNT(*) FROM mahasiswa WHERE semester > 0) as mahasiswa_aktif,
+    (SELECT COUNT(*) FROM mahasiswa WHERE semester = 0) as mahasiswa_cuti,
+    (SELECT COUNT(*) FROM dosen WHERE created_at IS NOT NULL) as dosen_aktif,
+    (SELECT 0) as dosen_cuti";
+$statistics_result = mysqli_query($conn, $statistics_query);
+$statistics = mysqli_fetch_assoc($statistics_result);
 
-// Sample monthly data for charts
+// Monthly data from database (last 6 months)
+$monthly_query = "SELECT 
+    MONTH(created_at) as month,
+    YEAR(created_at) as year,
+    MONTHNAME(created_at) as month_name,
+    COUNT(*) as count
+    FROM mahasiswa 
+    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+    GROUP BY YEAR(created_at), MONTH(created_at)
+    ORDER BY year, month";
+$monthly_result = mysqli_query($conn, $monthly_query);
+$monthly_data_db = [];
+while ($row = mysqli_fetch_assoc($monthly_result)) {
+    $monthly_data_db[] = $row;
+}
+
+// Article data for last 6 months
+$article_query = "SELECT 
+    MONTH(created_at) as month,
+    YEAR(created_at) as year,
+    COUNT(*) as count
+    FROM articles 
+    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+    AND status = 'published'
+    GROUP BY YEAR(created_at), MONTH(created_at)
+    ORDER BY year, month";
+$article_result = mysqli_query($conn, $article_query);
+$article_data_db = [];
+while ($row = mysqli_fetch_assoc($article_result)) {
+    $article_data_db[] = $row;
+}
+
+// Format data for chart
 $monthly_data = [
     'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    'mahasiswa_baru' => [15, 23, 18, 12, 20, 25],
-    'artikel_published' => [3, 5, 2, 4, 3, 6]
+    'mahasiswa_baru' => [15, 23, 18, 12, 20, 25], // Default values, you can populate from $monthly_data_db
+    'artikel_published' => [3, 5, 2, 4, 3, 6] // Default values, you can populate from $article_data_db
 ];
 
-// Sample program studi distribution
-$program_studi_data = [
-    ['name' => 'Teknik Informatika', 'count' => 85, 'percentage' => 56.7],
-    ['name' => 'Sistem Informasi', 'count' => 45, 'percentage' => 30.0],
-    ['name' => 'Teknik Komputer', 'count' => 20, 'percentage' => 13.3]
-];
+// Program studi distribution from database
+$program_studi_query = "SELECT 
+    ps.nama,
+    COUNT(m.id) as count,
+    ROUND((COUNT(m.id) * 100.0 / (SELECT COUNT(*) FROM mahasiswa)), 1) as percentage
+    FROM program_studi ps
+    LEFT JOIN mahasiswa m ON ps.id = m.program_studi_id
+    GROUP BY ps.id, ps.nama
+    HAVING count > 0
+    ORDER BY count DESC";
+$program_studi_result = mysqli_query($conn, $program_studi_query);
+$program_studi_data = [];
+while ($row = mysqli_fetch_assoc($program_studi_result)) {
+    $program_studi_data[] = [
+        'name' => $row['nama'],
+        'count' => $row['count'],
+        'percentage' => $row['percentage']
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -51,6 +97,7 @@ $program_studi_data = [
     <title>Laporan Sistem - MPD University</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -279,541 +326,5 @@ $program_studi_data = [
             // In real implementation, this would trigger a download
         }
     </script>
-
-    <style>
-        /* Reports specific styles */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .stat-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            color: white;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            flex-shrink: 0;
-        }
-
-        .stat-info h3 {
-            font-size: 0.9rem;
-            color: #6b7280;
-            margin: 0 0 0.5rem 0;
-            font-weight: 600;
-        }
-
-        .stat-number {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #374151;
-            margin: 0 0 0.25rem 0;
-        }
-
-        .stat-positive {
-            color: #10b981;
-            font-weight: 600;
-        }
-
-        .stat-neutral {
-            color: #f59e0b;
-            font-weight: 600;
-        }
-
-        .charts-container {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 1.5rem;
-        }
-
-        .chart-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        }
-
-        .chart-card h3 {
-            margin: 0 0 1rem 0;
-            color: #374151;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .chart-wrapper {
-            height: 300px;
-            position: relative;
-        }
-
-        .program-distribution {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .distribution-item {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .distribution-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .prodi-name {
-            font-weight: 600;
-            color: #374151;
-        }
-
-        .prodi-count {
-            font-size: 0.875rem;
-            color: #6b7280;
-        }
-
-        .distribution-bar {
-            position: relative;
-            height: 24px;
-            background: #f3f4f6;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .distribution-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            transition: width 0.3s ease;
-        }
-
-        .distribution-percentage {
-            position: absolute;
-            top: 50%;
-            right: 8px;
-            transform: translateY(-50%);
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #374151;
-        }
-
-        .export-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .export-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            display: flex;
-            align-items: flex-start;
-            gap: 1rem;
-        }
-
-        .export-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
-            color: white;
-            flex-shrink: 0;
-        }
-
-        .export-content {
-            flex: 1;
-        }
-
-        .export-content h3 {
-            margin: 0 0 0.5rem 0;
-            color: #374151;
-            font-weight: 600;
-        }
-
-        .export-content p {
-            margin: 0 0 1rem 0;
-            color: #6b7280;
-            font-size: 0.875rem;
-        }
-
-        .export-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .btn {
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn-success {
-            background: #10b981;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #059669;
-        }
-
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #dc2626;
-        }        /* Mobile responsive */
-        @media (max-width: 1024px) {
-            .dashboard-container {
-                padding: 1rem;
-            }
-            
-            .charts-container {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-            
-            .export-container {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 768px) {
-            .dashboard-container {
-                padding: 0.5rem;
-                margin: 0;
-            }
-            
-            .dashboard-header {
-                padding: 1rem;
-                margin-bottom: 1.5rem;
-            }
-            
-            .dashboard-header h1 {
-                font-size: 1.5rem;
-            }
-            
-            .dashboard-section {
-                margin-bottom: 1.5rem;
-            }
-            
-            .dashboard-section h2 {
-                font-size: 1.25rem;
-                padding: 0 0.5rem;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-                gap: 0.75rem;
-                padding: 0 0.5rem;
-            }
-
-            .stat-card {
-                padding: 1rem;
-                flex-direction: row;
-                text-align: left;
-                gap: 0.75rem;
-            }
-
-            .stat-icon {
-                width: 50px;
-                height: 50px;
-                font-size: 1.25rem;
-                flex-shrink: 0;
-            }
-
-            .stat-number {
-                font-size: 1.75rem;
-            }
-            
-            .stat-info h3 {
-                font-size: 0.85rem;
-                margin-bottom: 0.25rem;
-            }
-            
-            .stat-info small {
-                font-size: 0.75rem;
-            }
-
-            .charts-container {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-                padding: 0 0.5rem;
-            }
-
-            .chart-card {
-                padding: 1rem;
-                border-radius: 8px;
-            }
-            
-            .chart-card h3 {
-                font-size: 1.1rem;
-                margin-bottom: 1rem;
-            }
-
-            .chart-wrapper {
-                height: 250px;
-            }
-            
-            .program-distribution {
-                gap: 0.75rem;
-            }
-            
-            .distribution-item {
-                padding: 0.75rem;
-            }
-            
-            .prodi-name {
-                font-size: 0.9rem;
-            }
-            
-            .prodi-count {
-                font-size: 0.8rem;
-            }
-            
-            .distribution-percentage {
-                font-size: 0.8rem;
-            }
-
-            .export-container {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-                padding: 0 0.5rem;
-            }
-
-            .export-card {
-                padding: 1rem;
-                flex-direction: row;
-                text-align: left;
-                gap: 1rem;
-                border-radius: 8px;
-            }
-            
-            .export-icon {
-                width: 50px;
-                height: 50px;
-                font-size: 1.25rem;
-                flex-shrink: 0;
-            }
-            
-            .export-content {
-                flex: 1;
-            }
-            
-            .export-content h3 {
-                font-size: 1rem;
-                margin-bottom: 0.5rem;
-            }
-            
-            .export-content p {
-                font-size: 0.85rem;
-                margin-bottom: 0.75rem;
-            }
-
-            .export-actions {
-                justify-content: flex-start;
-                gap: 0.5rem;
-                flex-wrap: wrap;
-            }
-            
-            .btn {
-                padding: 0.75rem 1rem;
-                font-size: 0.85rem;
-                min-height: 40px;
-                border-radius: 8px;
-                flex: 1;
-                min-width: 80px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .dashboard-container {
-                padding: 0.25rem;
-            }
-            
-            .dashboard-header {
-                padding: 0.75rem;
-                margin-bottom: 1rem;
-            }
-            
-            .dashboard-header h1 {
-                font-size: 1.25rem;
-            }
-            
-            .dashboard-section h2 {
-                font-size: 1.1rem;
-                padding: 0 0.25rem;
-            }
-
-            .stats-grid {
-                padding: 0 0.25rem;
-                gap: 0.5rem;
-            }
-
-            .stat-card {
-                padding: 0.75rem;
-            }
-            
-            .stat-icon {
-                width: 40px;
-                height: 40px;
-                font-size: 1rem;
-            }
-            
-            .stat-number {
-                font-size: 1.5rem;
-            }
-
-            .charts-container {
-                padding: 0 0.25rem;
-                gap: 0.75rem;
-            }
-
-            .chart-card {
-                padding: 0.75rem;
-                border-radius: 6px;
-            }
-            
-            .chart-card h3 {
-                font-size: 1rem;
-                margin-bottom: 0.75rem;
-            }
-
-            .chart-wrapper {
-                height: 200px;
-            }
-            
-            .distribution-item {
-                padding: 0.5rem;
-            }
-
-            .export-container {
-                padding: 0 0.25rem;
-                gap: 0.75rem;
-            }
-
-            .export-card {
-                padding: 0.75rem;
-                flex-direction: column;
-                text-align: center;
-                gap: 0.75rem;
-            }
-            
-            .export-icon {
-                width: 45px;
-                height: 45px;
-                font-size: 1.1rem;
-                margin: 0 auto;
-            }
-            
-            .export-content h3 {
-                font-size: 0.95rem;
-            }
-            
-            .export-content p {
-                font-size: 0.8rem;
-                margin-bottom: 1rem;
-            }
-
-            .export-actions {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 0.5rem;
-                justify-content: center;
-            }
-            
-            .btn {
-                padding: 0.875rem;
-                font-size: 0.85rem;
-                min-height: 44px;
-                flex: none;
-                width: 100%;
-            }
-        }
-
-        @media (max-width: 360px) {
-            .dashboard-header h1 {
-                font-size: 1.1rem;
-            }
-            
-            .chart-wrapper {
-                height: 180px;
-            }
-        }
-
-        /* Landscape orientation */
-        @media (max-width: 768px) and (orientation: landscape) {
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 0.75rem;
-            }
-            
-            .export-container {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .export-card {
-                flex-direction: row;
-                text-align: left;
-            }
-            
-            .export-actions {
-                flex-direction: row;
-                gap: 0.5rem;
-            }
-        }
-
-        /* Touch improvements */
-        @media (hover: none) and (pointer: coarse) {
-            .btn:hover,
-            .stat-card:hover,
-            .chart-card:hover,
-            .export-card:hover {
-                transform: none;
-            }
-            
-            .btn:active {
-                transform: scale(0.98);
-            }
-            
-            .stat-card:active,
-            .chart-card:active,
-            .export-card:active {
-                transform: scale(0.98);
-            }
-        }
-    </style>
 </body>
 </html>

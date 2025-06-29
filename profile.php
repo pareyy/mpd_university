@@ -1,3 +1,51 @@
+<?php
+// Include database connection
+require_once 'koneksi.php';
+
+// Get fakultas and program studi data
+$fakultas_query = "SELECT f.*, COUNT(ps.id) as total_prodi 
+                   FROM fakultas f 
+                   LEFT JOIN program_studi ps ON f.id = ps.fakultas_id 
+                   GROUP BY f.id 
+                   ORDER BY f.nama";
+$fakultas_result = mysqli_query($conn, $fakultas_query);
+$fakultas_data = [];
+while ($row = mysqli_fetch_assoc($fakultas_result)) {
+    $fakultas_data[] = $row;
+}
+
+// Get program studi data grouped by fakultas
+$prodi_query = "SELECT ps.*, f.nama as fakultas_nama 
+                FROM program_studi ps 
+                JOIN fakultas f ON ps.fakultas_id = f.id 
+                ORDER BY f.nama, ps.nama";
+$prodi_result = mysqli_query($conn, $prodi_query);
+$prodi_data = [];
+while ($row = mysqli_fetch_assoc($prodi_result)) {
+    $prodi_data[$row['fakultas_nama']][] = $row;
+}
+
+// Get dosen data for featured faculty
+$dosen_query = "SELECT d.*, f.nama as fakultas_nama 
+                FROM dosen d 
+                JOIN fakultas f ON d.fakultas_id = f.id 
+                ORDER BY d.created_at ASC 
+                LIMIT 6";
+$dosen_result = mysqli_query($conn, $dosen_query);
+$dosen_data = [];
+while ($row = mysqli_fetch_assoc($dosen_result)) {
+    $dosen_data[] = $row;
+}
+
+// Get statistics
+$stats_query = "SELECT 
+    (SELECT COUNT(*) FROM mahasiswa) as total_mahasiswa,
+    (SELECT COUNT(*) FROM dosen) as total_dosen,
+    (SELECT COUNT(*) FROM fakultas) as total_fakultas,
+    (SELECT COUNT(*) FROM program_studi) as total_prodi";
+$stats_result = mysqli_query($conn, $stats_query);
+$stats = mysqli_fetch_assoc($stats_result);
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -10,8 +58,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Remixicon for additional icons -->
     <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css" rel="stylesheet">
-    <!-- Typed.js for text animation -->
-    <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
 </head>
 <body>
     <?php include 'includes/nav.php'; ?>
@@ -21,8 +67,9 @@
             <div class="text-center mb-4">
                 <img src="assets/img/logo.png" alt="MPD University Logo" class="school-logo">
                 <h1 class="mt-3">MPD University</h1>
+                <p class="hero-subtitle">Membangun Masa Depan Melalui Pendidikan Berkualitas</p>
             </div>
-            
+
             <div>
                 <h3 class="text-primary">Tentang Universitas Kami</h3>
                 <p class="hero-description">
@@ -47,115 +94,71 @@
                 </ul>
                 
                 <h4 class="mt-4 text-primary">Fakultas & Program Studi</h4>
-                <ul class="hero-description">
-                    <li>Fakultas Teknik (Teknik Informatika, Teknik Elektro, Teknik Sipil)</li>
-                    <li>Fakultas Ekonomi dan Bisnis (Manajemen, Akuntansi, Ekonomi Pembangunan)</li>
-                    <li>Fakultas Ilmu Komputer (Sistem Informasi, Ilmu Komputer, Teknologi Informasi)</li>
-                    <li>Fakultas Kedokteran dan Ilmu Kesehatan (Kedokteran, Keperawatan, Farmasi)</li>
-                    <li>Fakultas Humaniora (Sastra, Ilmu Komunikasi, Hubungan Internasional)</li>
-                </ul>
+                <div class="fakultas-grid">
+                    <?php foreach ($fakultas_data as $fakultas): ?>
+                    <div class="fakultas-card">
+                        <div class="fakultas-header">
+                            <h5><?php echo htmlspecialchars($fakultas['nama']); ?></h5>
+                            <span class="prodi-count"><?php echo $fakultas['total_prodi']; ?> Program Studi</span>
+                        </div>
+                        <div class="fakultas-content">
+                            <p class="dekan-info">
+                                <strong>Dekan:</strong> <?php echo htmlspecialchars($fakultas['dekan']); ?>
+                            </p>
+                            <?php if (isset($prodi_data[$fakultas['nama']])): ?>
+                            <div class="prodi-list">
+                                <strong>Program Studi:</strong>
+                                <ul>
+                                    <?php foreach ($prodi_data[$fakultas['nama']] as $prodi): ?>
+                                    <li><?php echo htmlspecialchars($prodi['nama']); ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
             </div>
             
-            <!-- <div class="mt-5">
+            <?php if (!empty($dosen_data)): ?>
+            <div class="mt-5">
                 <h3 class="text-primary">Dosen Terkemuka</h3>
                 <p class="hero-description">Berikut adalah beberapa dosen terkemuka kami yang memiliki dedikasi dan keahlian luar biasa di bidangnya masing-masing.</p>
                 
                 <div class="faculty-slider-container">
                     <div class="faculty-slider-track" id="facultySliderTrack">
+                        <?php foreach ($dosen_data as $dosen): ?>
                         <div class="faculty-card">
                             <div class="faculty-image">
-                                <img src="assets/img/faculty/dosen1.jpg" alt="Prof. Dr. Ahmad Fauzi">
+                                <img src="assets/img/faculty/default-avatar.jpg" alt="<?php echo htmlspecialchars($dosen['nama']); ?>" onerror="this.src='assets/img/blank.jpg'">
                             </div>
                             <div class="faculty-info">
-                                <h4>Prof. Dr. Ahmad Fauzi</h4>
-                                <p class="faculty-title">Dekan Fakultas Teknik</p>
-                                <p class="faculty-specialty">Spesialisasi: Teknik Elektro</p>
-                                <p class="faculty-description">
-                                    Memiliki pengalaman mengajar lebih dari 20 tahun di bidang teknik elektro dan telah menerbitkan puluhan jurnal internasional.
-                                </p>
+                                <h4><?php echo htmlspecialchars($dosen['nama']); ?></h4>
+                                <p class="faculty-title"><?php echo htmlspecialchars($dosen['fakultas_nama']); ?></p>
+                                <p class="faculty-specialty">Spesialisasi: <?php echo htmlspecialchars($dosen['bidang_keahlian']); ?></p>
+                                <p class="faculty-nidn">NIDN: <?php echo htmlspecialchars($dosen['nidn']); ?></p>
+                                <div class="faculty-contact">
+                                    <?php if ($dosen['email']): ?>
+                                    <p><i class="fas fa-envelope"></i> <?php echo htmlspecialchars($dosen['email']); ?></p>
+                                    <?php endif; ?>
+                                    <?php if ($dosen['phone']): ?>
+                                    <p><i class="fas fa-phone"></i> <?php echo htmlspecialchars($dosen['phone']); ?></p>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                         </div>
-
-                        <div class="faculty-card">
-                            <div class="faculty-image">
-                                <img src="assets/img/faculty/dosen2.jpg" alt="Dr. Siti Rahma">
-                            </div>
-                            <div class="faculty-info">
-                                <h4>Dr. Siti Rahma, M.Sc.</h4>
-                                <p class="faculty-title">Ketua Program Studi Ilmu Komputer</p>
-                                <p class="faculty-specialty">Spesialisasi: Kecerdasan Buatan</p>
-                                <p class="faculty-description">
-                                    Peneliti aktif di bidang machine learning dan computer vision dengan berbagai kolaborasi riset internasional.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="faculty-card">
-                            <div class="faculty-image">
-                                <img src="assets/img/faculty/dosen3.jpg" alt="Dr. Budi Santoso">
-                            </div>
-                            <div class="faculty-info">
-                                <h4>Prof. Dr. Budi Santoso</h4>
-                                <p class="faculty-title">Dekan Fakultas Ilmu Data dan Kecerdasan Buatan</p>
-                                <p class="faculty-specialty">Spesialisasi: Deep Learning</p>
-                                <p class="faculty-description">
-                                    Dikenal sebagai pakar AI nasional dengan pengalaman industri sebelumnya di Google dan Microsoft Research.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="faculty-card">
-                            <div class="faculty-image">
-                                <img src="assets/img/faculty/dosen4.jpg" alt="Dr. Dewi Putri">
-                            </div>
-                            <div class="faculty-info">
-                                <h4>Dr. Dewi Putri, Ph.D.</h4>
-                                <p class="faculty-title">Ketua Program Studi Ekonomi</p>
-                                <p class="faculty-specialty">Spesialisasi: Ekonomi Makro</p>
-                                <p class="faculty-description">
-                                    Alumni Harvard University yang aktif dalam penelitian tentang ekonomi pembangunan dan kebijakan publik.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="faculty-card">
-                            <div class="faculty-image">
-                                <img src="assets/img/faculty/dosen5.jpg" alt="Dr. Rudi Hartanto">
-                            </div>
-                            <div class="faculty-info">
-                                <h4>Dr. Rudi Hartanto</h4>
-                                <p class="faculty-title">Dosen Teknik Informatika</p>
-                                <p class="faculty-specialty">Spesialisasi: Cyber Security</p>
-                                <p class="faculty-description">
-                                    Berpengalaman sebagai konsultan keamanan siber untuk berbagai institusi pemerintah dan perusahaan besar.
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <div class="faculty-card">
-                            <div class="faculty-image">
-                                <img src="assets/img/faculty/dosen6.jpg" alt="Dr. Hendra Wijaya">
-                            </div>
-                            <div class="faculty-info">
-                                <h4>Dr. Hendra Wijaya, M.T.</h4>
-                                <p class="faculty-title">Dosen Teknik Elektro</p>
-                                <p class="faculty-specialty">Spesialisasi: Energi Terbarukan</p>
-                                <p class="faculty-description">
-                                    Memimpin tim penelitian di bidang teknologi energi terbarukan dengan beberapa paten terdaftar.
-                                </p>
-                            </div>
-                        </div>
+                        <?php endforeach; ?>
                     </div>
                     
                     <div class="faculty-slider-navigation">
                         <button class="slider-button prev" id="prevBtn"><i class="fas fa-chevron-left"></i></button>
-                        <div class="slider-dots" id="sliderDots">
-                            
-                        </div>
+                        <div class="slider-dots" id="sliderDots"></div>
                         <button class="slider-button next" id="nextBtn"><i class="fas fa-chevron-right"></i></button>
                     </div>
                 </div>
-            </div> -->
+            </div>
+            <?php endif; ?>
             
             <div class="text-center mt-5 pt-4 border-top">
                 <p>Jl. Pendidikan No. 123, Kota Makmur | Telp: (021) 1234-5678 | Email: info@mpduniversity.ac.id</p>
@@ -168,15 +171,18 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const track = document.getElementById('facultySliderTrack');
-            const cards = track.querySelectorAll('.faculty-card');
+            const cards = track ? track.querySelectorAll('.faculty-card') : [];
             const dotsContainer = document.getElementById('sliderDots');
             const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
+            
+            if (cards.length === 0) return;
             
             let currentSlide = 0;
             let slidesToShow = getCardsToShow();
             
             function createDots() {
+                if (!dotsContainer) return;
                 dotsContainer.innerHTML = '';
                 const numDots = Math.ceil(cards.length / slidesToShow);
                 
@@ -214,17 +220,21 @@
                     dot.classList.toggle('active', i === currentSlide);
                 });
                 
-                prevBtn.disabled = currentSlide === 0;
-                nextBtn.disabled = currentSlide === maxSlide;
+                if (prevBtn) prevBtn.disabled = currentSlide === 0;
+                if (nextBtn) nextBtn.disabled = currentSlide === maxSlide;
             }
             
-            prevBtn.addEventListener('click', () => {
-                goToSlide(currentSlide - 1);
-            });
+            if (prevBtn) {
+                prevBtn.addEventListener('click', () => {
+                    goToSlide(currentSlide - 1);
+                });
+            }
             
-            nextBtn.addEventListener('click', () => {
-                goToSlide(currentSlide + 1);
-            });
+            if (nextBtn) {
+                nextBtn.addEventListener('click', () => {
+                    goToSlide(currentSlide + 1);
+                });
+            }
             
             function initSlider() {
                 slidesToShow = getCardsToShow();

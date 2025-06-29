@@ -13,61 +13,17 @@ require_once '../koneksi.php';
 
 // Get dosen information
 $user_id = $_SESSION['user_id'];
-$query = "SELECT * FROM users WHERE id = '$user_id'";
+$query = "SELECT u.*, d.id as dosen_id FROM users u 
+          LEFT JOIN dosen d ON u.id = d.user_id 
+          WHERE u.id = '$user_id'";
 $result = mysqli_query($conn, $query);
 $user = mysqli_fetch_assoc($result);
 
-// Sample data for mata kuliah - replace with actual database queries
-$mata_kuliah_list = [
-    [
-        'id' => 1,
-        'kode_mk' => 'PWL001',
-        'nama_mk' => 'Pemrograman Web Lanjut',
-        'sks' => 3,
-        'semester' => 5,
-        'deskripsi' => 'Mata kuliah ini membahas pengembangan aplikasi web menggunakan framework modern seperti Laravel, CodeIgniter, dan teknologi web terkini.',
-        'jumlah_mahasiswa' => 28,
-        'ruangan' => 'Lab Komputer 1',
-        'hari' => 'Senin',
-        'jam' => '08:00-10:30'
-    ],
-    [
-        'id' => 2,
-        'kode_mk' => 'DB001',
-        'nama_mk' => 'Basis Data Lanjut',
-        'sks' => 3,
-        'semester' => 4,
-        'deskripsi' => 'Mata kuliah yang membahas konsep lanjutan basis data termasuk optimasi query, stored procedure, trigger, dan database administration.',
-        'jumlah_mahasiswa' => 32,
-        'ruangan' => 'Lab Database',
-        'hari' => 'Rabu',
-        'jam' => '10:30-13:00'
-    ],
-    [
-        'id' => 3,
-        'kode_mk' => 'RPL001',
-        'nama_mk' => 'Rekayasa Perangkat Lunak',
-        'sks' => 3,
-        'semester' => 5,
-        'deskripsi' => 'Mata kuliah yang membahas metodologi pengembangan perangkat lunak, SDLC, UML, dan manajemen proyek software.',
-        'jumlah_mahasiswa' => 25,
-        'ruangan' => 'Ruang Kelas A',
-        'hari' => 'Jumat',
-        'jam' => '13:00-15:30'
-    ],
-    [
-        'id' => 4,
-        'kode_mk' => 'AI001',
-        'nama_mk' => 'Artificial Intelligence',
-        'sks' => 3,
-        'semester' => 6,
-        'deskripsi' => 'Mata kuliah yang membahas konsep dasar AI, machine learning, neural networks, dan implementasi algoritma AI.',
-        'jumlah_mahasiswa' => 20,
-        'ruangan' => 'Lab AI',
-        'hari' => 'Selasa',
-        'jam' => '08:00-10:30'
-    ]
-];
+$dosen_id = $user['dosen_id'];
+
+if (!$dosen_id) {
+    die("Error: Data dosen tidak ditemukan.");
+}
 
 // Handle form submissions
 $message = '';
@@ -76,16 +32,71 @@ $message_type = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['action'])) {
         if ($_POST['action'] == 'add') {
-            // Simulate adding new mata kuliah
-            $success_message = "Mata kuliah berhasil ditambahkan!";
-        } elseif ($_POST['action'] == 'edit') {
-            // Simulate editing mata kuliah
-            $success_message = "Mata kuliah berhasil diperbarui!";
-        } elseif ($_POST['action'] == 'delete') {
-            // Simulate deleting mata kuliah
-            $success_message = "Mata kuliah berhasil dihapus!";
+            $kode_mk = mysqli_real_escape_string($conn, $_POST['kode_mk']);
+            $nama_mk = mysqli_real_escape_string($conn, $_POST['nama_mk']);
+            $sks = (int)$_POST['sks'];
+            $semester = (int)$_POST['semester'];
+            $deskripsi = mysqli_real_escape_string($conn, $_POST['deskripsi']);
+            
+            $insert_query = "INSERT INTO mata_kuliah (kode_mk, nama_mk, sks, semester, deskripsi, dosen_id) 
+                           VALUES ('$kode_mk', '$nama_mk', $sks, $semester, '$deskripsi', $dosen_id)";
+            
+            if (mysqli_query($conn, $insert_query)) {
+                $success_message = "Mata kuliah berhasil ditambahkan!";
+            } else {
+                $error_message = "Error: " . mysqli_error($conn);
+            }
+        } elseif ($_POST['action'] == 'edit' && isset($_POST['mk_id'])) {
+            $mk_id = (int)$_POST['mk_id'];
+            $kode_mk = mysqli_real_escape_string($conn, $_POST['kode_mk']);
+            $nama_mk = mysqli_real_escape_string($conn, $_POST['nama_mk']);
+            $sks = (int)$_POST['sks'];
+            $semester = (int)$_POST['semester'];
+            $deskripsi = mysqli_real_escape_string($conn, $_POST['deskripsi']);
+            
+            $update_query = "UPDATE mata_kuliah SET 
+                           kode_mk = '$kode_mk', 
+                           nama_mk = '$nama_mk', 
+                           sks = $sks, 
+                           semester = $semester, 
+                           deskripsi = '$deskripsi',
+                           updated_at = NOW()
+                           WHERE id = $mk_id AND dosen_id = $dosen_id";
+            
+            if (mysqli_query($conn, $update_query)) {
+                $success_message = "Mata kuliah berhasil diperbarui!";
+            } else {
+                $error_message = "Error: " . mysqli_error($conn);
+            }
+        } elseif ($_POST['action'] == 'delete' && isset($_POST['mk_id'])) {
+            $mk_id = (int)$_POST['mk_id'];
+            
+            $delete_query = "DELETE FROM mata_kuliah WHERE id = $mk_id AND dosen_id = $dosen_id";
+            
+            if (mysqli_query($conn, $delete_query)) {
+                $success_message = "Mata kuliah berhasil dihapus!";
+            } else {
+                $error_message = "Error: " . mysqli_error($conn);
+            }
         }
     }
+}
+
+// Get mata kuliah data for current dosen with additional info from jadwal
+$mata_kuliah_query = "SELECT mk.*, 
+                             COUNT(k.mahasiswa_id) as jumlah_mahasiswa,
+                             j.ruang, j.hari, 
+                             CONCAT(j.jam_mulai, '-', j.jam_selesai) as jam
+                      FROM mata_kuliah mk 
+                      LEFT JOIN kelas k ON mk.id = k.mata_kuliah_id
+                      LEFT JOIN jadwal j ON mk.id = j.mata_kuliah_id
+                      WHERE mk.dosen_id = $dosen_id 
+                      GROUP BY mk.id
+                      ORDER BY mk.created_at DESC";
+$mata_kuliah_result = mysqli_query($conn, $mata_kuliah_query);
+$mata_kuliah_list = [];
+while ($row = mysqli_fetch_assoc($mata_kuliah_result)) {
+    $mata_kuliah_list[] = $row;
 }
 ?>
 <!DOCTYPE html>
@@ -95,8 +106,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelola Mata Kuliah - MPD University</title>
     <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
-    <!-- Font Awesome CDN for icons -->
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    <link rel="stylesheet" href="../assets/css/dosen.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -125,11 +136,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <!-- Add New Mata Kuliah Form -->
             <div class="dashboard-section">
                 <h2><i class="fas fa-plus"></i> Tambah Mata Kuliah Baru</h2>
-                <div class="form-container">
+                <div class="form-container form-spacious">
                     <form method="POST" action="">
                         <input type="hidden" name="action" value="add">
                         
-                        <div class="form-row">
+                        <div class="form-row form-row-spacious">
                             <div class="form-group">
                                 <label for="kode_mk">Kode Mata Kuliah</label>
                                 <input type="text" id="kode_mk" name="kode_mk" class="form-control" required 
@@ -148,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </div>
                         </div>
                         
-                        <div class="form-row">
+                        <div class="form-row form-row-spacious">
                             <div class="form-group">
                                 <label for="nama_mk">Nama Mata Kuliah</label>
                                 <input type="text" id="nama_mk" name="nama_mk" class="form-control" required 
@@ -171,32 +182,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </div>
                         </div>
                         
-                        <div class="form-group">
+                        <div class="form-group form-group-spacious">
                             <label for="deskripsi">Deskripsi Mata Kuliah</label>
                             <textarea id="deskripsi" name="deskripsi" class="form-control" rows="4" 
                                     placeholder="Masukkan deskripsi singkat mata kuliah..."></textarea>
                         </div>
-                          <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-plus"></i> Tambah Mata Kuliah
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="resetForm()">
-                            <i class="fas fa-undo"></i> Reset Form
-                        </button>
+                        
+                        <div class="form-actions form-actions-spacious">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Tambah Mata Kuliah
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                                <i class="fas fa-undo"></i> Reset Form
+                            </button>
+                        </div>
                     </form>
                 </div>
-            </div>            <!-- Mata Kuliah Cards -->
+            </div>
+
+            <!-- Mata Kuliah Cards -->
             <div class="dashboard-section">
                 <h2><i class="fas fa-list"></i> Daftar Mata Kuliah</h2>
                 <div class="mata-kuliah-grid">
                     <?php foreach ($mata_kuliah_list as $mk): ?>
                         <div class="mk-card">
                             <div class="mk-header">
-                                <div class="mk-code"><?php echo $mk['kode_mk']; ?></div>
+                                <div class="mk-code"><?php echo htmlspecialchars($mk['kode_mk']); ?></div>
                                 <div class="mk-semester">Semester <?php echo $mk['semester']; ?></div>
                             </div>
                             <div class="mk-body">
-                                <h3><?php echo $mk['nama_mk']; ?></h3>
-                                <p class="mk-description"><?php echo substr($mk['deskripsi'], 0, 120) . '...'; ?></p>
+                                <h3><?php echo htmlspecialchars($mk['nama_mk']); ?></h3>
+                                <p class="mk-description"><?php echo htmlspecialchars(substr($mk['deskripsi'] ?? 'Tidak ada deskripsi', 0, 80)) . '...'; ?></p>
                                 <div class="mk-details">
                                     <div class="detail-item">
                                         <i class="fas fa-graduation-cap"></i>
@@ -204,27 +220,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     </div>
                                     <div class="detail-item">
                                         <i class="fas fa-users"></i>
-                                        <span><?php echo $mk['jumlah_mahasiswa']; ?> Mahasiswa</span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <i class="fas fa-map-marker-alt"></i>
-                                        <span><?php echo $mk['ruangan']; ?></span>
+                                        <span><?php echo $mk['jumlah_mahasiswa'] ?: 0; ?> Mahasiswa</span>
                                     </div>
                                     <div class="detail-item">
                                         <i class="fas fa-clock"></i>
-                                        <span><?php echo $mk['hari'] . ', ' . $mk['jam']; ?></span>
+                                        <span><?php echo htmlspecialchars(($mk['hari'] ? $mk['hari'] . ', ' : '') . ($mk['jam'] ?: 'Belum dijadwalkan')); ?></span>
                                     </div>
                                 </div>
                             </div>
                             <div class="mk-actions">
-                                <button class="btn btn-sm btn-primary" onclick="viewDetails(<?php echo $mk['id']; ?>)">
-                                    <i class="fas fa-eye"></i> Detail
+                                <button class="btn btn-sm btn-warning" onclick="editMataKuliah(<?php echo $mk['id']; ?>)" title="Edit">
+                                    <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-sm btn-warning" onclick="editMataKuliah(<?php echo $mk['id']; ?>)">
-                                    <i class="fas fa-edit"></i> Edit
-                                </button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteMataKuliah(<?php echo $mk['id']; ?>)">
-                                    <i class="fas fa-trash"></i> Hapus
+                                <button class="btn btn-sm btn-danger" onclick="deleteMataKuliah(<?php echo $mk['id']; ?>)" title="Hapus">
+                                    <i class="fas fa-trash"></i>
                                 </button>
                             </div>
                         </div>
@@ -234,11 +243,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </main>
 
-    <?php include '../includes/footer.php'; ?>    <script>
+    <?php include '../includes/footer.php'; ?>
+
+    <script>
+        const mkData = <?php echo json_encode($mata_kuliah_list); ?>;
+
         function editMataKuliah(id) {
-            // Get mata kuliah data
-            const mkData = <?php echo json_encode($mata_kuliah_list); ?>;
-            const mk = mkData.find(item => item.id === id);
+            const mk = mkData.find(item => item.id == id);
             
             if (mk) {
                 // Fill form with existing data
@@ -246,17 +257,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 document.getElementById('nama_mk').value = mk.nama_mk;
                 document.getElementById('sks').value = mk.sks;
                 document.getElementById('semester').value = mk.semester;
-                document.getElementById('deskripsi').value = mk.deskripsi;
+                document.getElementById('deskripsi').value = mk.deskripsi || '';
                 
                 // Change form action to edit
                 document.querySelector('input[name="action"]').value = 'edit';
-                document.querySelector('input[name="mk_id"]') || (() => {
-                    const hiddenInput = document.createElement('input');
-                    hiddenInput.type = 'hidden';
-                    hiddenInput.name = 'mk_id';
-                    hiddenInput.value = id;
-                    document.querySelector('form').appendChild(hiddenInput);
-                })();
+                
+                // Add or update hidden mk_id input
+                let mkIdInput = document.querySelector('input[name="mk_id"]');
+                if (!mkIdInput) {
+                    mkIdInput = document.createElement('input');
+                    mkIdInput.type = 'hidden';
+                    mkIdInput.name = 'mk_id';
+                    document.querySelector('form').appendChild(mkIdInput);
+                }
+                mkIdInput.value = id;
                 
                 // Change button text
                 document.querySelector('button[type="submit"]').innerHTML = '<i class="fas fa-save"></i> Update Mata Kuliah';
@@ -267,7 +281,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         function deleteMataKuliah(id) {
-            if (confirm('Apakah Anda yakin ingin menghapus mata kuliah ini?')) {
+            const mk = mkData.find(item => item.id == id);
+            if (mk && confirm(`Apakah Anda yakin ingin menghapus mata kuliah "${mk.nama_mk}"?`)) {
                 // Create a form to submit delete request
                 const form = document.createElement('form');
                 form.method = 'POST';
@@ -277,23 +292,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 `;
                 document.body.appendChild(form);
                 form.submit();
-            }
-        }
-
-        function viewDetails(id) {
-            const mkData = <?php echo json_encode($mata_kuliah_list); ?>;
-            const mk = mkData.find(item => item.id === id);
-            
-            if (mk) {
-                alert(`Detail Mata Kuliah:\n\n` +
-                     `Kode: ${mk.kode_mk}\n` +
-                     `Nama: ${mk.nama_mk}\n` +
-                     `SKS: ${mk.sks}\n` +
-                     `Semester: ${mk.semester}\n` +
-                     `Mahasiswa: ${mk.jumlah_mahasiswa}\n` +
-                     `Ruangan: ${mk.ruangan}\n` +
-                     `Jadwal: ${mk.hari}, ${mk.jam}\n\n` +
-                     `Deskripsi: ${mk.deskripsi}`);
             }
         }
 
@@ -309,290 +307,5 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
     </script>
-
-    <style>
-        .form-container {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            align-items: end;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-        }
-
-        .form-group.full-width {
-            grid-column: 1 / -1;
-        }
-
-        .form-group label {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: #374151;
-            font-size: 0.9rem;
-            text-align: left;
-            display: block;
-        }
-
-        /* Ensure all form controls have exact same dimensions */
-        input.form-control,
-        select.form-control {
-            height: 48px !important;
-            padding: 0.875rem !important;
-            box-sizing: border-box !important;
-            border: 2px solid #e5e7eb !important;
-            border-radius: 8px !important;
-            width: 100% !important;
-            font-size: 1rem !important;
-            line-height: 1.2 !important;
-            vertical-align: top;
-        }
-
-        textarea.form-control {
-            height: auto !important;
-            min-height: 80px;
-            resize: vertical;
-            padding: 0.875rem !important;
-        }
-
-        select.form-control {
-            padding-right: 2.5rem !important;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-            background-position: right 0.75rem center;
-            background-repeat: no-repeat;
-            background-size: 1.5em 1.5em;
-            background-color: white;
-        }
-
-        /* Mobile responsive */
-        @media (max-width: 1024px) {
-            .dashboard-container {
-                padding: 1rem;
-            }
-            
-            .form-container {
-                padding: 1.5rem;
-            }
-            
-            .mata-kuliah-grid {
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                gap: 1rem;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .dashboard-container {
-                padding: 0.5rem;
-                margin: 0;
-            }
-            
-            .dashboard-header {
-                padding: 1rem;
-                margin-bottom: 1.5rem;
-            }
-            
-            .dashboard-header h1 {
-                font-size: 1.5rem;
-            }
-            
-            .dashboard-section {
-                margin-bottom: 1.5rem;
-            }
-            
-            .dashboard-section h2 {
-                font-size: 1.25rem;
-                padding: 0 0.5rem;
-            }
-
-            .form-container {
-                padding: 1rem;
-                margin: 0 0.5rem 1.5rem 0.5rem;
-                border-radius: 8px;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-                align-items: stretch;
-            }
-
-            .form-control {
-                padding: 1rem;
-                font-size: 1rem;
-                border-radius: 10px;
-                height: 52px;
-                width: 100%;
-                box-sizing: border-box;
-            }
-
-            textarea.form-control {
-                height: auto;
-                min-height: 100px;
-                padding: 1rem;
-            }
-
-            .btn {
-                padding: 1rem;
-                font-size: 1rem;
-                min-height: 48px;
-                border-radius: 10px;
-                justify-content: center;
-                touch-action: manipulation;
-                margin-bottom: 0.5rem;
-            }
-            
-            .mata-kuliah-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-                padding: 0 0.5rem;
-            }
-            
-            .mk-card {
-                border-radius: 8px;
-            }
-            
-            .mk-header {
-                padding: 1rem;
-                flex-direction: column;
-                gap: 0.5rem;
-                text-align: center;
-            }
-            
-            .mk-body {
-                padding: 1rem;
-            }
-            
-            .mk-details {
-                grid-template-columns: 1fr;
-                gap: 0.5rem;
-            }
-            
-            .mk-actions {
-                flex-direction: column;
-                gap: 0.5rem;
-                padding: 1rem;
-            }
-            
-            .btn-sm {
-                padding: 0.75rem 1rem;
-                font-size: 0.9rem;
-                min-height: 40px;
-                width: 100%;
-                justify-content: center;
-            }
-            
-            .alert {
-                margin: 0 0.5rem 1.5rem 0.5rem;
-                padding: 1rem;
-                border-radius: 8px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .dashboard-container {
-                padding: 0.25rem;
-            }
-            
-            .dashboard-header {
-                padding: 0.75rem;
-                margin-bottom: 1rem;
-            }
-            
-            .dashboard-header h1 {
-                font-size: 1.25rem;
-            }
-            
-            .dashboard-section h2 {
-                font-size: 1.1rem;
-                padding: 0 0.25rem;
-            }
-
-            .form-container {
-                padding: 0.75rem;
-                margin: 0 0.25rem 1rem 0.25rem;
-            }
-
-            .form-control {
-                padding: 0.875rem;
-                height: 48px;
-            }
-
-            textarea.form-control {
-                min-height: 80px;
-                padding: 0.875rem;
-            }
-            
-            .btn {
-                padding: 0.875rem;
-                font-size: 0.9rem;
-            }
-            
-            .mata-kuliah-grid {
-                padding: 0 0.25rem;
-            }
-            
-            .mk-header {
-                padding: 0.75rem;
-            }
-            
-            .mk-body {
-                padding: 0.75rem;
-            }
-            
-            .mk-body h3 {
-                font-size: 1.1rem;
-            }
-            
-            .mk-actions {
-                padding: 0.75rem;
-            }
-            
-            .alert {
-                margin: 0 0.25rem 1rem 0.25rem;
-                padding: 0.75rem;
-                font-size: 0.9rem;
-            }
-        }
-
-        /* Landscape orientation */
-        @media (max-width: 768px) and (orientation: landscape) {
-            .form-row {
-                grid-template-columns: 1fr 1fr;
-                gap: 0.75rem;
-            }
-            
-            .mata-kuliah-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        /* Touch improvements */
-        @media (hover: none) and (pointer: coarse) {
-            .mk-card:hover {
-                transform: none;
-            }
-            
-            .mk-card:active {
-                transform: scale(0.98);
-            }
-            
-            .form-control:focus {
-                border-color: #667eea;
-                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-            }
-        }
-    </style>
 </body>
 </html>

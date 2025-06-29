@@ -1,3 +1,55 @@
+<?php
+// Include database connection
+require_once 'koneksi.php';
+
+// Get pengumuman data
+$pengumuman_query = "SELECT * FROM pengumuman ORDER BY tanggal DESC LIMIT 5";
+$pengumuman_result = mysqli_query($conn, $pengumuman_query);
+$pengumuman_data = [];
+while ($row = mysqli_fetch_assoc($pengumuman_result)) {
+    $pengumuman_data[] = $row;
+}
+
+// Get kalender akademik data
+$kalender_query = "SELECT * FROM kalender_akademik WHERE tanggal >= CURDATE() ORDER BY tanggal ASC LIMIT 8";
+$kalender_result = mysqli_query($conn, $kalender_query);
+$kalender_data = [];
+while ($row = mysqli_fetch_assoc($kalender_result)) {
+    $kalender_data[] = $row;
+}
+
+// Get berita akademik data
+$berita_query = "SELECT * FROM berita_akademik WHERE status = 'published' ORDER BY tanggal DESC";
+$berita_result = mysqli_query($conn, $berita_query);
+$berita_data = [];
+while ($row = mysqli_fetch_assoc($berita_result)) {
+    $berita_data[] = $row;
+}
+
+// Function to format Indonesian date
+function formatIndonesianDate($date) {
+    $months = [
+        1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun',
+        7 => 'Jul', 8 => 'Agt', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des'
+    ];
+    $timestamp = strtotime($date);
+    $day = date('j', $timestamp);
+    $month = $months[date('n', $timestamp)];
+    $year = date('Y', $timestamp);
+    return "$day $month $year";
+}
+
+function formatShortDate($date) {
+    $months = [
+        1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun',
+        7 => 'Jul', 8 => 'Agt', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des'
+    ];
+    $timestamp = strtotime($date);
+    $day = date('j', $timestamp);
+    $month = $months[date('n', $timestamp)];
+    return ['day' => $day, 'month' => $month];
+}
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -21,82 +73,71 @@
             <section class="info-section">
                 <h2 class="section-title"><i class="fa-solid fa-bullhorn mr-2"></i> Pengumuman Penting</h2>
                 
+                <?php foreach ($pengumuman_data as $pengumuman): ?>
                 <div class="announcement-card">
-                    <h3 class="announcement-title">Jadwal Pendaftaran Semester Ganjil 2024/2025</h3>
+                    <h3 class="announcement-title"><?php echo htmlspecialchars($pengumuman['judul']); ?></h3>
                     <div class="announcement-date">
-                        <i class="fa-solid fa-calendar"></i> 15 Juli 2025
+                        <i class="fa-solid fa-calendar"></i> <?php echo formatIndonesianDate($pengumuman['tanggal']); ?>
                     </div>
                     <div class="announcement-content">
-                        <p>Pendaftaran mata kuliah untuk semester ganjil tahun akademik 2024/2025 akan dibuka pada tanggal <strong>1 Agustus 2025</strong> dan ditutup pada tanggal <strong>15 Agustus 2025</strong>. Mahasiswa diharapkan berkonsultasi dengan dosen pembimbing akademik sebelum melakukan pendaftaran.</p>
-                        <p>Proses pendaftaran dilakukan melalui portal akademik dengan menggunakan akun masing-masing.</p>
+                        <?php 
+                        // Convert markdown-style formatting to HTML
+                        $content = htmlspecialchars($pengumuman['isi']);
+                        $content = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $content);
+                        $content = nl2br($content);
+                        echo $content;
+                        ?>
                     </div>
                 </div>
+                <?php endforeach; ?>
                 
+                <?php if (empty($pengumuman_data)): ?>
                 <div class="announcement-card">
-                    <h3 class="announcement-title">Pembayaran Uang Kuliah Semester Ganjil</h3>
-                    <div class="announcement-date">
-                        <i class="fa-solid fa-calendar"></i> 10 Juli 2025
-                    </div>
+                    <h3 class="announcement-title">Tidak ada pengumuman saat ini</h3>
                     <div class="announcement-content">
-                        <p>Batas waktu pembayaran uang kuliah semester ganjil tahun akademik 2024/2025 adalah <strong>25 Juli 2025</strong>. Pembayaran dapat dilakukan melalui transfer bank atau langsung di bagian keuangan universitas.</p>
-                        <p>Mahasiswa yang belum melakukan pembayaran hingga batas waktu yang ditentukan tidak dapat melakukan pendaftaran mata kuliah.</p>
+                        <p>Silakan periksa kembali nanti untuk pengumuman terbaru.</p>
                     </div>
                 </div>
+                <?php endif; ?>
             </section>
             
             <section class="info-section">
                 <h2 class="section-title"><i class="fa-solid fa-calendar-alt mr-2"></i> Kalender Akademik</h2>
                 
+                <?php foreach ($kalender_data as $kalender): ?>
+                <?php $dateFormat = formatShortDate($kalender['tanggal']); ?>
                 <div class="calendar-item">
                     <div class="calendar-date">
-                        <span class="day">1</span>
-                        <span class="month">Agt</span>
+                        <span class="day"><?php echo $dateFormat['day']; ?></span>
+                        <span class="month"><?php echo $dateFormat['month']; ?></span>
                     </div>
                     <div class="calendar-info">
-                        <h4>Pendaftaran Mata Kuliah Semester Ganjil</h4>
-                        <p>Pendaftaran mata kuliah untuk mahasiswa angkatan 2021-2025 melalui portal akademik.</p>
+                        <h4><?php echo htmlspecialchars($kalender['judul']); ?></h4>
+                        <p><?php echo htmlspecialchars($kalender['deskripsi']); ?></p>
+                        <span class="calendar-category"><?php echo ucfirst($kalender['kategori']); ?></span>
                     </div>
                 </div>
+                <?php endforeach; ?>
                 
+                <?php if (empty($kalender_data)): ?>
                 <div class="calendar-item">
                     <div class="calendar-date">
-                        <span class="day">20</span>
-                        <span class="month">Agt</span>
+                        <span class="day">-</span>
+                        <span class="month">-</span>
                     </div>
                     <div class="calendar-info">
-                        <h4>Orientasi Mahasiswa Baru</h4>
-                        <p>Pengenalan lingkungan kampus dan sistem akademik untuk mahasiswa baru angkatan 2025.</p>
+                        <h4>Tidak ada agenda mendatang</h4>
+                        <p>Silakan periksa kembali nanti untuk agenda akademik terbaru.</p>
                     </div>
                 </div>
-                
-                <div class="calendar-item">
-                    <div class="calendar-date">
-                        <span class="day">28</span>
-                        <span class="month">Agt</span>
-                    </div>
-                    <div class="calendar-info">
-                        <h4>Awal Perkuliahan Semester Ganjil</h4>
-                        <p>Perkuliahan dimulai untuk semua fakultas dan program studi, baik untuk kelas reguler maupun kelas malam.</p>
-                    </div>
-                </div>
-                
-                <div class="calendar-item">
-                    <div class="calendar-date">
-                        <span class="day">15</span>
-                        <span class="month">Okt</span>
-                    </div>
-                    <div class="calendar-info">
-                        <h4>Ujian Tengah Semester</h4>
-                        <p>Periode ujian tengah semester untuk semua mata kuliah semester ganjil.</p>
-                    </div>
-                </div>
+                <?php endif; ?>
             </section>
             
             <section class="info-section">
                 <h2 class="section-title"><i class="fa-solid fa-newspaper mr-2"></i> Berita Akademik Terbaru</h2>
                 
                 <div class="articles-container" id="articlesContainer">
-                    <!-- Artikel akan dimuat secara dinamis disini -->
+                    <!-- Articles will be loaded dynamically -->
                 </div>
                 
                 <div class="article-navigation">
@@ -117,51 +158,16 @@
     <?php include 'includes/footer.php'; ?>
     
     <script>
-        // Contoh data artikel
-        const articles = [
-            {
-                id: 1,
-                title: 'MPD University Raih Akreditasi Unggul',
-                date: '5 Juli 2025',
-                image: 'assets/img/blank.jpg',
-                excerpt: 'MPD University berhasil meraih status Akreditasi Unggul dari Badan Akreditasi Nasional Perguruan Tinggi (BAN-PT) untuk periode 2025-2028.'
-            },
-            {
-                id: 2,
-                title: 'Program Beasiswa Baru untuk Mahasiswa Berprestasi',
-                date: '28 Juni 2025',
-                image: 'assets/img/blank.jpg',
-                excerpt: 'MPD University bekerja sama dengan industri terkemuka meluncurkan program beasiswa baru untuk mahasiswa berprestasi di bidang teknologi dan sains.'
-            },
-            {
-                id: 3,
-                title: 'Fakultas Baru: Ilmu Data dan Kecerdasan Buatan',
-                date: '15 Juni 2025',
-                image: 'assets/img/blank.jpg',
-                excerpt: 'Mulai tahun akademik 2024/2025, MPD University membuka Fakultas baru yang berfokus pada Ilmu Data dan Kecerdasan Buatan.'
-            },
-            {
-                id: 4,
-                title: 'Seminar Internasional: Teknologi Pendidikan di Era Digital',
-                date: '10 Juni 2025',
-                image: 'assets/img/blank.jpg',
-                excerpt: 'MPD University menyelenggarakan seminar internasional dengan pembicara dari berbagai negara untuk membahas perkembangan teknologi pendidikan.'
-            },
-            {
-                id: 5,
-                title: 'Penelitian Dosen MPD University Dipublikasikan di Jurnal Internasional',
-                date: '5 Juni 2025',
-                image: 'assets/img/blank.jpg',
-                excerpt: 'Penelitian tentang energi terbarukan yang dilakukan oleh tim dosen MPD University berhasil dipublikasikan dalam jurnal internasional bergengsi.'
-            },
-            {
-                id: 6,
-                title: 'Peringatan Dies Natalis ke-33 MPD University',
-                date: '1 Juni 2025',
-                image: 'assets/img/blank.jpg',
-                excerpt: 'MPD University merayakan ulang tahun ke-33 dengan berbagai kegiatan akademik dan sosial yang melibatkan seluruh civitas akademika.'
-            }
-        ];
+        // Convert PHP array to JavaScript
+        const articles = <?php echo json_encode(array_map(function($item) {
+            return [
+                'id' => $item['id'],
+                'title' => $item['judul'],
+                'date' => formatIndonesianDate($item['tanggal']),
+                'image' => $item['gambar'] ? 'assets/images/berita/' . $item['gambar'] : 'assets/img/blank.jpg',
+                'excerpt' => $item['ringkasan']
+            ];
+        }, $berita_data)); ?>;
 
         const articlesPerPage = 3;
         let currentPage = 1;
@@ -173,7 +179,7 @@
             return `
                 <div class="article-card">
                     <div class="article-image">
-                        <img src="${article.image}" alt="${article.title}">
+                        <img src="${article.image}" alt="${article.title}" onerror="this.src='assets/img/blank.jpg'">
                     </div>
                     <div class="article-content">
                         <h3 class="article-title">${article.title}</h3>
@@ -189,6 +195,18 @@
             const container = document.getElementById('articlesContainer');
             container.innerHTML = '';
             
+            if (articles.length === 0) {
+                container.innerHTML = `
+                    <div class="no-articles">
+                        <i class="fa-solid fa-newspaper"></i>
+                        <h3>Belum ada berita</h3>
+                        <p>Silakan periksa kembali nanti untuk berita akademik terbaru.</p>
+                    </div>
+                `;
+                document.querySelector('.article-navigation').style.display = 'none';
+                return;
+            }
+            
             const startIndex = (currentPage - 1) * articlesPerPage;
             const endIndex = Math.min(startIndex + articlesPerPage, articles.length);
             const currentArticles = articles.slice(startIndex, endIndex);
@@ -200,6 +218,10 @@
             document.getElementById('currentPage').textContent = currentPage;
             document.getElementById('prevButton').disabled = currentPage === 1;
             document.getElementById('nextButton').disabled = currentPage === totalPages;
+            
+            if (totalPages <= 1) {
+                document.querySelector('.article-navigation').style.display = 'none';
+            }
         }
 
         document.getElementById('prevButton').addEventListener('click', () => {

@@ -13,58 +13,43 @@ require_once '../koneksi.php';
 
 // Get dosen information
 $user_id = $_SESSION['user_id'];
-$query = "SELECT * FROM users WHERE id = '$user_id'";
+$query = "SELECT u.*, d.id as dosen_id FROM users u 
+          LEFT JOIN dosen d ON u.id = d.user_id 
+          WHERE u.id = '$user_id'";
 $result = mysqli_query($conn, $query);
 $user = mysqli_fetch_assoc($result);
 
-// Sample jadwal data (in real application, this would come from database)
-$jadwal = [
-    [
-        'hari' => 'Senin',
-        'jam_mulai' => '08:00',
-        'jam_selesai' => '10:30',
-        'mata_kuliah' => 'Pemrograman Web Lanjut',
-        'kelas' => 'A',
-        'ruang' => 'Lab 1',
-        'jumlah_mahasiswa' => 30
-    ],
-    [
-        'hari' => 'Senin',
-        'jam_mulai' => '10:30',
-        'jam_selesai' => '12:00',
-        'mata_kuliah' => 'Database',
-        'kelas' => 'B',
-        'ruang' => 'Ruang 201',
-        'jumlah_mahasiswa' => 25
-    ],
-    [
-        'hari' => 'Selasa',
-        'jam_mulai' => '13:00',
-        'jam_selesai' => '15:30',
-        'mata_kuliah' => 'Algoritma dan Struktur Data',
-        'kelas' => 'C',
-        'ruang' => 'Ruang 105',
-        'jumlah_mahasiswa' => 35
-    ],
-    [
-        'hari' => 'Rabu',
-        'jam_mulai' => '08:00',
-        'jam_selesai' => '10:30',
-        'mata_kuliah' => 'Sistem Basis Data',
-        'kelas' => 'A',
-        'ruang' => 'Lab 2',
-        'jumlah_mahasiswa' => 28
-    ],
-    [
-        'hari' => 'Kamis',
-        'jam_mulai' => '10:30',
-        'jam_selesai' => '12:00',
-        'mata_kuliah' => 'Pemrograman Mobile',
-        'kelas' => 'B',
-        'ruang' => 'Lab 3',
-        'jumlah_mahasiswa' => 22
-    ]
-];
+$dosen_id = $user['dosen_id'];
+
+if (!$dosen_id) {
+    die("Error: Data dosen tidak ditemukan.");
+}
+
+// Get jadwal data from database for this dosen
+$jadwal_query = "SELECT j.*, mk.kode_mk, mk.nama_mk, mk.sks,
+                        COUNT(k.mahasiswa_id) as jumlah_mahasiswa
+                 FROM jadwal j
+                 LEFT JOIN mata_kuliah mk ON j.mata_kuliah_id = mk.id
+                 LEFT JOIN kelas k ON mk.id = k.mata_kuliah_id
+                 WHERE mk.dosen_id = '$dosen_id'
+                 GROUP BY j.id
+                 ORDER BY FIELD(j.hari, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'), j.jam_mulai";
+$jadwal_result = mysqli_query($conn, $jadwal_query);
+$jadwal = [];
+while ($row = mysqli_fetch_assoc($jadwal_result)) {
+    $jadwal[] = [
+        'id' => $row['id'],
+        'hari' => $row['hari'],
+        'jam_mulai' => date('H:i', strtotime($row['jam_mulai'])),
+        'jam_selesai' => date('H:i', strtotime($row['jam_selesai'])),
+        'mata_kuliah' => $row['nama_mk'],
+        'kode_mk' => $row['kode_mk'],
+        'kelas' => $row['kelas'],
+        'ruang' => $row['ruang'],
+        'sks' => $row['sks'],
+        'jumlah_mahasiswa' => $row['jumlah_mahasiswa'] ?: 0
+    ];
+}
 
 // Group jadwal by day
 $jadwal_by_day = [];
@@ -81,7 +66,8 @@ $hari_list = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jadwal Mengajar - MPD University</title>
     <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    <link rel="stylesheet" href="../assets/css/dosen.css">
     <!-- Font Awesome CDN for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -108,19 +94,25 @@ $hari_list = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
                                 </span>
                             </div>
                             <div class="day-schedule">
-                                <?php if (isset($jadwal_by_day[$hari])): ?>
+                                <?php if (isset($jadwal_by_day[$hari]) && !empty($jadwal_by_day[$hari])): ?>
                                     <?php foreach ($jadwal_by_day[$hari] as $j): ?>
                                         <div class="schedule-card">
                                             <div class="schedule-time">
                                                 <?php echo $j['jam_mulai']; ?> - <?php echo $j['jam_selesai']; ?>
                                             </div>
-                                            <div class="schedule-subject">
-                                                <?php echo $j['mata_kuliah']; ?>
-                                            </div>
-                                            <div class="schedule-details">
-                                                <span><i class="fas fa-users"></i> Kelas <?php echo $j['kelas']; ?></span>
-                                                <span><i class="fas fa-map-marker-alt"></i> <?php echo $j['ruang']; ?></span>
-                                                <span><i class="fas fa-user-graduate"></i> <?php echo $j['jumlah_mahasiswa']; ?> mhs</span>
+                                            <div class="schedule-content">
+                                                <div class="schedule-subject">
+                                                    <?php echo htmlspecialchars($j['mata_kuliah']); ?>
+                                                </div>
+                                                <div class="schedule-code">
+                                                    <?php echo htmlspecialchars($j['kode_mk']); ?>
+                                                </div>
+                                                <div class="schedule-details">
+                                                    <span><i class="fas fa-users"></i> Kelas <?php echo htmlspecialchars($j['kelas']); ?></span>
+                                                    <span><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($j['ruang']); ?></span>
+                                                    <span><i class="fas fa-user-graduate"></i> <?php echo $j['jumlah_mahasiswa']; ?> mhs</span>
+                                                    <span><i class="fas fa-graduation-cap"></i> <?php echo $j['sks']; ?> SKS</span>
+                                                </div>
                                             </div>
                                         </div>
                                     <?php endforeach; ?>
@@ -154,7 +146,7 @@ $hari_list = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
                     $today_indo = $hari_indonesia[$today];
                     ?>
                     
-                    <?php if (isset($jadwal_by_day[$today_indo])): ?>
+                    <?php if (isset($jadwal_by_day[$today_indo]) && !empty($jadwal_by_day[$today_indo])): ?>
                         <?php foreach ($jadwal_by_day[$today_indo] as $j): ?>
                             <div class="today-schedule-item">
                                 <div class="time-badge">
@@ -169,16 +161,19 @@ $hari_list = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
                                     </span>
                                 </div>
                                 <div class="schedule-info">
-                                    <h4><?php echo $j['mata_kuliah']; ?></h4>
-                                    <p><i class="fas fa-map-marker-alt"></i> <?php echo $j['ruang']; ?> | 
-                                       <i class="fas fa-users"></i> Kelas <?php echo $j['kelas']; ?> | 
-                                       <i class="fas fa-user-graduate"></i> <?php echo $j['jumlah_mahasiswa']; ?> mahasiswa</p>
+                                    <h4><?php echo htmlspecialchars($j['mata_kuliah']); ?></h4>
+                                    <p>
+                                        <i class="fas fa-code"></i> <?php echo htmlspecialchars($j['kode_mk']); ?> | 
+                                        <i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($j['ruang']); ?> | 
+                                        <i class="fas fa-users"></i> Kelas <?php echo htmlspecialchars($j['kelas']); ?> | 
+                                        <i class="fas fa-user-graduate"></i> <?php echo $j['jumlah_mahasiswa']; ?> mahasiswa
+                                    </p>
                                 </div>
                                 <div class="schedule-actions">
-                                    <button class="btn btn-primary btn-sm">
+                                    <button class="btn btn-primary btn-sm" onclick="goToAbsensi(<?php echo $j['id']; ?>)">
                                         <i class="fas fa-user-check"></i> Absensi
                                     </button>
-                                    <button class="btn btn-secondary btn-sm">
+                                    <button class="btn btn-secondary btn-sm" onclick="goToMateri(<?php echo $j['id']; ?>)">
                                         <i class="fas fa-file-alt"></i> Materi
                                     </button>
                                 </div>
@@ -267,243 +262,16 @@ $hari_list = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
     <?php include '../includes/footer.php'; ?>
 
-    <style>
-        .schedule-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
+    <script>
+        function goToAbsensi(jadwalId) {
+            // Redirect to absensi page with jadwal ID
+            window.location.href = 'absensi.php?jadwal_id=' + jadwalId;
         }
 
-        .day-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
+        function goToMateri(jadwalId) {
+            // Redirect to materi page with jadwal ID
+            window.location.href = 'materi.php?jadwal_id=' + jadwalId;
         }
-
-        .day-header {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: white;
-            padding: 1rem;
-            text-align: center;
-        }
-
-        .day-header h3 {
-            margin: 0 0 0.5rem 0;
-            font-size: 1.2rem;
-        }
-
-        .day-count {
-            font-size: 0.875rem;
-            opacity: 0.9;
-        }
-
-        .day-schedule {
-            padding: 1rem;
-            min-height: 200px;
-        }
-
-        .schedule-card {
-            background: #f8fafc;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            border-left: 4px solid #2563eb;
-        }
-
-        .schedule-card:last-child {
-            margin-bottom: 0;
-        }
-
-        .schedule-time {
-            font-weight: 600;
-            color: #2563eb;
-            font-size: 0.875rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .schedule-subject {
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 0.5rem;
-        }
-
-        .schedule-details {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .schedule-details span {
-            font-size: 0.75rem;
-            color: #6b7280;
-        }
-
-        .schedule-details i {
-            width: 12px;
-            margin-right: 0.25rem;
-        }
-
-        .no-schedule {
-            text-align: center;
-            color: #9ca3af;
-            padding: 2rem 0;
-        }
-
-        .no-schedule i {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .today-schedule {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            padding: 1.5rem;
-        }
-
-        .today-schedule-item {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            padding: 1rem 0;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .today-schedule-item:last-child {
-            border-bottom: none;
-        }
-
-        .time-badge {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: white;
-            padding: 1rem;
-            border-radius: 8px;
-            text-align: center;
-            min-width: 100px;
-        }
-
-        .time-badge .time {
-            display: block;
-            font-weight: 700;
-            font-size: 1.1rem;
-        }
-
-        .time-badge .duration {
-            display: block;
-            font-size: 0.75rem;
-            opacity: 0.9;
-        }
-
-        .schedule-info {
-            flex: 1;
-        }
-
-        .schedule-info h4 {
-            margin: 0 0 0.5rem 0;
-            color: #374151;
-        }
-
-        .schedule-info p {
-            margin: 0;
-            color: #6b7280;
-            font-size: 0.875rem;
-        }
-
-        .schedule-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .no-schedule-today {
-            text-align: center;
-            padding: 3rem;
-            color: #6b7280;
-        }
-
-        .no-schedule-today i {
-            font-size: 3rem;
-            color: #10b981;
-            margin-bottom: 1rem;
-        }
-
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .stat-item {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .stat-item .stat-icon {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: white;
-            padding: 1rem;
-            border-radius: 8px;
-            font-size: 1.5rem;
-        }
-
-        .stat-item:nth-child(2) .stat-icon {
-            background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .stat-item:nth-child(3) .stat-icon {
-            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-        }
-
-        .stat-item:nth-child(4) .stat-icon {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-        }
-
-        .stat-text h4 {
-            margin: 0 0 0.25rem 0;
-            color: #374151;
-            font-size: 1rem;
-        }
-
-        .stat-text p {
-            margin: 0;
-            color: #2563eb;
-            font-weight: 600;
-        }
-
-        .btn-secondary {
-            background: #6b7280;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #4b5563;
-        }
-
-        @media (max-width: 768px) {
-            .schedule-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .today-schedule-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 1rem;
-            }
-            
-            .schedule-actions {
-                width: 100%;
-                justify-content: space-between;
-            }
-            
-            .stats-row {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+    </script>
 </body>
 </html>

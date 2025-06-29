@@ -31,9 +31,30 @@ function getAvatarUrl($photo_name) {
 
 // Get mahasiswa information
 $user_id = $_SESSION['user_id'];
-$query = "SELECT * FROM users WHERE id = '$user_id'";
-$result = mysqli_query($conn, $query);
+
+// Get complete mahasiswa profile data
+$profile_query = "SELECT 
+    u.*, 
+    m.nim, 
+    m.nama, 
+    m.semester,
+    ps.nama as program_studi_nama, 
+    f.nama as fakultas_nama,
+    d.nama as dosen_wali
+FROM users u
+JOIN mahasiswa m ON u.id = m.user_id
+JOIN program_studi ps ON m.program_studi_id = ps.id
+JOIN fakultas f ON ps.fakultas_id = f.id
+LEFT JOIN dosen d ON ps.kaprodi = d.nama
+WHERE u.id = '$user_id'";
+
+$result = mysqli_query($conn, $profile_query);
 $user = mysqli_fetch_assoc($result);
+
+if (!$user) {
+    echo "Data mahasiswa tidak ditemukan!";
+    exit();
+}
 
 // Handle form submissions
 $message = '';
@@ -42,8 +63,42 @@ $message_type = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['update_profile'])) {
         // Handle profile update
-        $message = 'Profil berhasil diperbarui!';
-        $message_type = 'success';
+        $nama_lengkap = mysqli_real_escape_string($conn, $_POST['nama_lengkap']);
+        $tempat_lahir = mysqli_real_escape_string($conn, $_POST['tempat_lahir']);
+        $tanggal_lahir = mysqli_real_escape_string($conn, $_POST['tanggal_lahir']);
+        $jenis_kelamin = mysqli_real_escape_string($conn, $_POST['jenis_kelamin']);
+        $agama = mysqli_real_escape_string($conn, $_POST['agama']);
+        $alamat = mysqli_real_escape_string($conn, $_POST['alamat']);
+        $email_pribadi = mysqli_real_escape_string($conn, $_POST['email_pribadi']);
+        $no_telepon = mysqli_real_escape_string($conn, $_POST['no_telepon']);
+        $kewarganegaraan = mysqli_real_escape_string($conn, $_POST['kewarganegaraan']);
+        
+        // Update users table
+        $update_user_query = "UPDATE users SET 
+            full_name = '$nama_lengkap', 
+            phone = '$no_telepon',
+            alamat = '$alamat'
+            WHERE id = '$user_id'";
+        
+        // Update mahasiswa table
+        $update_mahasiswa_query = "UPDATE mahasiswa SET 
+            nama = '$nama_lengkap',
+            phone = '$no_telepon',
+            alamat = '$alamat'
+            WHERE user_id = '$user_id'";
+        
+        if (mysqli_query($conn, $update_user_query) && mysqli_query($conn, $update_mahasiswa_query)) {
+            $message = 'Profil berhasil diperbarui!';
+            $message_type = 'success';
+            
+            // Refresh user data
+            $result = mysqli_query($conn, $profile_query);
+            $user = mysqli_fetch_assoc($result);
+        } else {
+            $message = 'Gagal memperbarui profil: ' . mysqli_error($conn);
+            $message_type = 'error';
+        }
+        
     } elseif (isset($_POST['change_password'])) {
         // Handle password change
         $current_password = $_POST['current_password'];
@@ -54,9 +109,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $message = 'Password baru dan konfirmasi password tidak cocok!';
             $message_type = 'error';
         } else {
-            $message = 'Password berhasil diubah!';
-            $message_type = 'success';
+            // Verify current password
+            if (password_verify($current_password, $user['password'])) {
+                $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+                $update_password_query = "UPDATE users SET password = '$hashed_password' WHERE id = '$user_id'";
+                
+                if (mysqli_query($conn, $update_password_query)) {
+                    $message = 'Password berhasil diubah!';
+                    $message_type = 'success';
+                } else {
+                    $message = 'Gagal mengubah password: ' . mysqli_error($conn);
+                    $message_type = 'error';
+                }
+            } else {
+                $message = 'Password saat ini tidak benar!';
+                $message_type = 'error';
+            }
         }
+        
     } elseif (isset($_POST['action']) && $_POST['action'] == 'update_photo') {
         $selected_photo = mysqli_real_escape_string($conn, $_POST['selected_photo']);
         
@@ -66,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $message = "Foto profil berhasil diperbarui!";
             $message_type = 'success';
             // Refresh user data
-            $result = mysqli_query($conn, $query);
+            $result = mysqli_query($conn, $profile_query);
             $user = mysqli_fetch_assoc($result);
         } else {
             $message = "Error: " . mysqli_error($conn);
@@ -75,48 +145,72 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
-// Sample student data - replace with actual database queries
-$student_data = [
-    'nim' => $user['nim'] ?? '2021080001',
-    'nama_lengkap' => $user['full_name'] ?? 'Ahmad Fadhil Rahman',
-    'program_studi' => 'Teknik Informatika',
-    'fakultas' => 'Fakultas Teknologi Informasi',
-    'angkatan' => '2021',
-    'semester_aktif' => '6',
-    'status_mahasiswa' => 'Aktif',
-    'email' => $user['email'] ?? 'ahmad.fadhil@student.mpd.ac.id',
-    'email_pribadi' => 'ahmad.fadhil@gmail.com',
-    'no_telepon' => $user['phone'] ?? '081234567890',
-    'alamat' => $user['alamat'] ?? 'Jl. Sudirman No. 123, Jakarta Pusat',
-    'tempat_lahir' => 'Jakarta',
-    'tanggal_lahir' => '2003-05-15',
-    'jenis_kelamin' => 'Laki-laki',
-    'agama' => 'Islam',
-    'kewarganegaraan' => 'Indonesia',
-    'dosen_wali' => 'Dr. Budi Santoso, M.Kom',
-    'foto_profil' => getAvatarUrl($user['profile_photo'] ?? 'avatar-1.svg')
-];
+// Calculate academic progress
+$academic_query = "SELECT 
+    COUNT(*) as total_mk_diambil,
+    SUM(mk.sks) as total_sks_diambil,
+    COUNT(CASE WHEN n.grade IS NOT NULL THEN 1 END) as mk_selesai,
+    SUM(CASE WHEN n.grade IS NOT NULL THEN mk.sks END) as sks_lulus,
+    AVG(CASE 
+        WHEN n.grade = 'A' THEN 4.0
+        WHEN n.grade = 'A-' THEN 3.7
+        WHEN n.grade = 'B+' THEN 3.3
+        WHEN n.grade = 'B' THEN 3.0
+        WHEN n.grade = 'B-' THEN 2.7
+        WHEN n.grade = 'C+' THEN 2.3
+        WHEN n.grade = 'C' THEN 2.0
+        WHEN n.grade = 'C-' THEN 1.7
+        WHEN n.grade = 'D' THEN 1.0
+        ELSE NULL
+    END) as ipk
+FROM kelas k
+JOIN mata_kuliah mk ON k.mata_kuliah_id = mk.id
+LEFT JOIN nilai n ON mk.id = n.mata_kuliah_id AND n.mahasiswa_id = k.mahasiswa_id
+WHERE k.mahasiswa_id = (SELECT id FROM mahasiswa WHERE user_id = '$user_id')";
 
-// Academic summary
+$academic_result = mysqli_query($conn, $academic_query);
+$academic_data = mysqli_fetch_assoc($academic_result);
+
 $academic_summary = [
-    'ipk' => 3.65,
-    'sks_tempuh' => 108,
-    'sks_lulus' => 102,
-    'total_sks' => 144,
-    'semester_registrasi' => 6,
+    'ipk' => $academic_data['ipk'] ? number_format($academic_data['ipk'], 2) : '0.00',
+    'sks_tempuh' => $academic_data['total_sks_diambil'] ?: 0,
+    'sks_lulus' => $academic_data['sks_lulus'] ?: 0,
+    'total_sks' => 144, // Standard curriculum requirement
+    'semester_registrasi' => $user['semester'],
     'prestasi_akademik' => [
-        'Dean\'s List Semester 5',
-        'Juara 2 Programming Contest 2023',
-        'Best Student Award 2022'
+        'Mahasiswa Aktif',
+        'Program Studi ' . $user['program_studi_nama']
     ]
 ];
 
-// Emergency contact
+// Student data with real database values
+$student_data = [
+    'nim' => $user['nim'],
+    'nama_lengkap' => $user['nama'],
+    'program_studi' => $user['program_studi_nama'],
+    'fakultas' => $user['fakultas_nama'],
+    'angkatan' => '20' . substr($user['nim'], 0, 2),
+    'semester_aktif' => $user['semester'],
+    'status_mahasiswa' => 'Aktif',
+    'email' => $user['email'],
+    'email_pribadi' => $user['email'],
+    'no_telepon' => $user['phone'] ?: '',
+    'alamat' => $user['alamat'] ?: '',
+    'tempat_lahir' => 'Jakarta', // Default, could be added to database
+    'tanggal_lahir' => '2003-05-15', // Default, could be added to database
+    'jenis_kelamin' => 'Laki-laki', // Default, could be added to database
+    'agama' => 'Islam', // Default, could be added to database
+    'kewarganegaraan' => 'Indonesia', // Default, could be added to database
+    'dosen_wali' => $user['dosen_wali'] ?: 'Belum Ditentukan',
+    'foto_profil' => getAvatarUrl($user['profile_photo'] ?? 'avatar-1.svg')
+];
+
+// Emergency contact (could be expanded in database)
 $emergency_contact = [
-    'nama' => 'Siti Rahman (Ibu)',
+    'nama' => 'Orang Tua',
     'hubungan' => 'Orang Tua',
-    'no_telepon' => '081234567891',
-    'alamat' => 'Jl. Sudirman No. 123, Jakarta Pusat'
+    'no_telepon' => '',
+    'alamat' => $user['alamat'] ?: ''
 ];
 ?>
 
@@ -126,7 +220,8 @@ $emergency_contact = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profil - Portal Mahasiswa MPD University</title>
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/mahasiswa.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -259,7 +354,7 @@ $emergency_contact = [
                         <div class="form-grid">
                             <div class="form-group">
                                 <label for="nama_lengkap">Nama Lengkap</label>
-                                <input type="text" id="nama_lengkap" name="nama_lengkap" value="<?php echo $student_data['nama_lengkap']; ?>" class="form-control">
+                                <input type="text" id="nama_lengkap" name="nama_lengkap" value="<?php echo htmlspecialchars($student_data['nama_lengkap']); ?>" class="form-control">
                             </div>
                             <div class="form-group">
                                 <label for="nim">NIM</label>
@@ -443,7 +538,10 @@ $emergency_contact = [
             <div class="photo-modal-header">
                 <h3>Pilih Foto Profil</h3>
                 <button class="close-modal" onclick="closePhotoModal()">&times;</button>
-            </div>            <div class="photo-grid">                <?php                $vector_avatars = [
+            </div>
+            <div class="photo-grid">
+                <?php
+                $vector_avatars = [
                     'avatar-1.svg' => 'https://api.dicebear.com/7.x/open-peeps/svg?seed=character1&size=150&backgroundColor=f8f9fa&clothing=cardigan,blazer,dress&clothingColor=ff6b6b,4ecdc4,ffe66d',
                     'avatar-2.svg' => 'https://api.dicebear.com/7.x/open-peeps/svg?seed=character2&size=150&backgroundColor=f8f9fa&clothing=hoodie,shirt,cardigan&clothingColor=ff6b6b,2c3e50,4ecdc4',
                     'avatar-3.svg' => 'https://api.dicebear.com/7.x/open-peeps/svg?seed=character3&size=150&backgroundColor=f8f9fa&clothing=stripedShirt,hoodie,cardigan&clothingColor=2c3e50,ff6b6b,ffe66d',
@@ -477,208 +575,6 @@ $emergency_contact = [
         <input type="hidden" name="action" value="update_photo">
         <input type="hidden" name="selected_photo" id="selectedPhotoInput">
     </form>
-
-    <style>
-        /* Photo Modal Styles */
-        .photo-modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(5px);
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        .photo-modal-content {
-            background-color: white;
-            margin: 2% auto;
-            padding: 0;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-            animation: slideIn 0.3s ease-out;
-        }
-
-        .photo-modal-header {
-            padding: 20px 24px;
-            border-bottom: 1px solid #e0e0e0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .photo-modal-header h3 {
-            margin: 0;
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-
-        .close-modal {
-            background: none;
-            border: none;
-            font-size: 28px;
-            color: white;
-            cursor: pointer;
-            padding: 0;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: background-color 0.3s ease;
-        }
-
-        .close-modal:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .photo-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 16px;
-            padding: 24px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .photo-option {
-            position: relative;
-            aspect-ratio: 1;
-            border-radius: 12px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 3px solid transparent;
-        }
-
-        .photo-option:hover {
-            transform: scale(1.05);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-        }
-
-        .photo-option.selected {
-            border-color: #667eea;
-            transform: scale(1.05);
-        }
-
-        .photo-option img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .photo-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(102, 126, 234, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .photo-option.selected .photo-overlay {
-            opacity: 1;
-        }
-
-        .photo-overlay i {
-            color: white;
-            font-size: 2rem;
-        }
-
-        .photo-modal-footer {
-            padding: 20px 24px;
-            border-top: 1px solid #e0e0e0;
-            display: flex;
-            justify-content: flex-end;
-            gap: 12px;
-            background-color: #f8f9fa;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn-secondary {
-            background-color: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background-color: #5a6268;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
-            transform: translateY(-1px);
-        }
-
-        .btn-primary:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(0.9);
-            }
-            to {
-                opacity: 1;
-                transform: translate(-50%, -50%) scale(1);
-            }
-        }
-
-        /* Mobile responsive */
-        @media (max-width: 768px) {
-            .photo-modal-content {
-                width: 95%;
-                margin: 5% auto;
-            }
-
-            .photo-grid {
-                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-                gap: 12px;
-                padding: 16px;
-            }
-
-            .photo-modal-header,
-            .photo-modal-footer {
-                padding: 16px;
-            }        }
-    </style>
 
     <script>
         // Photo Modal Functions
@@ -754,45 +650,6 @@ $emergency_contact = [
             evt.currentTarget.classList.add("active");
         }
 
-        // Photo upload functionality
-        function changePhoto() {
-            document.getElementById('photoModal').style.display = 'block';
-        }
-
-        function closePhotoModal() {
-            document.getElementById('photoModal').style.display = 'none';
-            document.getElementById('photoForm').reset();
-            document.getElementById('photoPreview').style.display = 'none';
-        }
-
-        // Photo preview
-        document.getElementById('photoFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('previewImage').src = e.target.result;
-                    document.getElementById('photoPreview').style.display = 'block';
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-
-        // Photo form submission
-        document.getElementById('photoForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            
-            // Simulate photo upload (replace with actual AJAX call)
-            alert('Foto profil berhasil diupload! (Simulasi)');
-            closePhotoModal();
-            
-            // Update profile image
-            const newImageSrc = document.getElementById('previewImage').src;
-            document.getElementById('profileImage').src = newImageSrc;
-        });
-
         // Password validation
         document.getElementById('confirm_password').addEventListener('input', function() {
             const password = document.getElementById('new_password').value;
@@ -804,14 +661,6 @@ $emergency_contact = [
                 this.setCustomValidity('');
             }
         });
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('photoModal');
-            if (event.target === modal) {
-                closePhotoModal();
-            }
-        }
     </script>
 </body>
 </html>

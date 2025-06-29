@@ -23,19 +23,134 @@ $message_type = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['action'])) {
         if ($_POST['action'] == 'add') {
-            $message = "Artikel berhasil ditambahkan!";
-            $message_type = 'success';
+            $title = mysqli_real_escape_string($conn, $_POST['title']);
+            $content = mysqli_real_escape_string($conn, $_POST['content']);
+            $category = mysqli_real_escape_string($conn, $_POST['category'] ?? 'Umum');
+            $status = mysqli_real_escape_string($conn, $_POST['status']);
+            $excerpt = mysqli_real_escape_string($conn, substr($content, 0, 200) . '...');
+            
+            // Check if category column exists, if not add it
+            $check_column = "SHOW COLUMNS FROM articles LIKE 'category'";
+            $column_result = mysqli_query($conn, $check_column);
+            if (mysqli_num_rows($column_result) == 0) {
+                $add_column = "ALTER TABLE articles ADD COLUMN category VARCHAR(50) DEFAULT 'Umum' AFTER excerpt";
+                mysqli_query($conn, $add_column);
+            }
+            
+            // Handle file upload
+            $featured_image = null;
+            if (isset($_FILES['featured_image']) && $_FILES['featured_image']['error'] == 0) {
+                $upload_dir = '../assets/images/articles/';
+                if (!file_exists($upload_dir)) {
+                    mkdir($upload_dir, 0777, true);
+                }
+                
+                $file_extension = pathinfo($_FILES['featured_image']['name'], PATHINFO_EXTENSION);
+                $featured_image = 'article_' . time() . '.' . $file_extension;
+                $upload_path = $upload_dir . $featured_image;
+                
+                if (move_uploaded_file($_FILES['featured_image']['tmp_name'], $upload_path)) {
+                    // File uploaded successfully
+                } else {
+                    $featured_image = null;
+                }
+            }
+            
+            $insert_query = "INSERT INTO articles (title, content, excerpt, category, author_id, status, featured_image) 
+                           VALUES ('$title', '$content', '$excerpt', '$category', '$user_id', '$status', '$featured_image')";
+            
+            if (mysqli_query($conn, $insert_query)) {
+                $message = "Artikel berhasil ditambahkan!";
+                $message_type = 'success';
+            } else {
+                $message = "Error: " . mysqli_error($conn);
+                $message_type = 'error';
+            }
         } elseif ($_POST['action'] == 'edit') {
-            $message = "Artikel berhasil diperbarui!";
-            $message_type = 'success';
+            $id = mysqli_real_escape_string($conn, $_POST['article_id']);
+            $title = mysqli_real_escape_string($conn, $_POST['title']);
+            $content = mysqli_real_escape_string($conn, $_POST['content']);
+            $category = mysqli_real_escape_string($conn, $_POST['category']);
+            $status = mysqli_real_escape_string($conn, $_POST['status']);
+            $excerpt = mysqli_real_escape_string($conn, substr($content, 0, 200) . '...');
+            
+            // Handle file upload for edit
+            $featured_image_update = '';
+            if (isset($_FILES['featured_image']) && $_FILES['featured_image']['error'] == 0) {
+                $upload_dir = '../assets/images/articles/';
+                if (!file_exists($upload_dir)) {
+                    mkdir($upload_dir, 0777, true);
+                }
+                
+                $file_extension = pathinfo($_FILES['featured_image']['name'], PATHINFO_EXTENSION);
+                $featured_image = 'article_' . time() . '.' . $file_extension;
+                $upload_path = $upload_dir . $featured_image;
+                
+                if (move_uploaded_file($_FILES['featured_image']['tmp_name'], $upload_path)) {
+                    $featured_image_update = ", featured_image = '$featured_image'";
+                }
+            }
+            
+            $update_query = "UPDATE articles SET 
+                           title = '$title', 
+                           content = '$content', 
+                           excerpt = '$excerpt',
+                           category = '$category', 
+                           status = '$status'
+                           $featured_image_update
+                           WHERE id = '$id'";
+            
+            if (mysqli_query($conn, $update_query)) {
+                $message = "Artikel berhasil diperbarui!";
+                $message_type = 'success';
+            } else {
+                $message = "Error: " . mysqli_error($conn);
+                $message_type = 'error';
+            }
         } elseif ($_POST['action'] == 'delete') {
-            $message = "Artikel berhasil dihapus!";
-            $message_type = 'success';
+            $id = mysqli_real_escape_string($conn, $_POST['article_id']);
+            
+            // Get image file to delete
+            $image_query = "SELECT featured_image FROM articles WHERE id = '$id'";
+            $image_result = mysqli_query($conn, $image_query);
+            $image_data = mysqli_fetch_assoc($image_result);
+            
+            $delete_query = "DELETE FROM articles WHERE id = '$id'";
+            if (mysqli_query($conn, $delete_query)) {
+                // Delete image file if exists
+                if ($image_data['featured_image'] && file_exists('../assets/images/articles/' . $image_data['featured_image'])) {
+                    unlink('../assets/images/articles/' . $image_data['featured_image']);
+                }
+                $message = "Artikel berhasil dihapus!";
+                $message_type = 'success';
+            } else {
+                $message = "Error: " . mysqli_error($conn);
+                $message_type = 'error';
+            }
         } elseif ($_POST['action'] == 'publish') {
-            $message = "Artikel berhasil dipublikasikan!";
-            $message_type = 'success';
+            $id = mysqli_real_escape_string($conn, $_POST['article_id']);
+            $update_query = "UPDATE articles SET status = 'published' WHERE id = '$id'";
+            
+            if (mysqli_query($conn, $update_query)) {
+                $message = "Artikel berhasil dipublikasikan!";
+                $message_type = 'success';
+            } else {
+                $message = "Error: " . mysqli_error($conn);
+                $message_type = 'error';
+            }
         }
     }
+}
+
+// Get articles from database
+$articles_query = "SELECT a.*, u.username as author_name 
+                   FROM articles a 
+                   LEFT JOIN users u ON a.author_id = u.id 
+                   ORDER BY a.created_at DESC";
+$articles_result = mysqli_query($conn, $articles_query);
+$articles_data = [];
+while ($row = mysqli_fetch_assoc($articles_result)) {
+    $articles_data[] = $row;
 }
 ?>
 <!DOCTYPE html>
@@ -45,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelola Artikel - MPD University</title>
     <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -96,8 +211,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <label for="status">Status</label>
                                 <select id="status" name="status" class="form-control" required>
                                     <option value="">Pilih Status</option>
-                                    <option value="Draft">Draft</option>
-                                    <option value="Published">Published</option>
+                                    <option value="draft">Draft</option>
+                                    <option value="published">Published</option>
                                 </select>
                             </div>
                         </div>
@@ -128,6 +243,65 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </form>
                 </div>
             </div>
+
+            <!-- Articles List -->
+            <div class="dashboard-section">
+                <h2><i class="fas fa-list"></i> Daftar Artikel</h2>
+                <?php if (count($articles_data) > 0): ?>
+                    <div class="articles-grid">
+                        <?php foreach ($articles_data as $article): ?>
+                            <div class="article-card">
+                                <?php if ($article['featured_image']): ?>
+                                    <div class="article-image">
+                                        <img src="../assets/images/articles/<?php echo $article['featured_image']; ?>" alt="<?php echo htmlspecialchars($article['title']); ?>">
+                                        <div class="article-status">
+                                            <span class="status-badge status-<?php echo $article['status']; ?>">
+                                                <?php echo ucfirst($article['status']); ?>
+                                            </span>
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="article-no-image">
+                                        <i class="fas fa-image"></i>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="article-content">
+                                    <div class="article-meta">
+                                        <span class="category">
+                                            <?php echo htmlspecialchars($article['category'] ?? 'Umum'); ?>
+                                        </span>
+                                        <span class="date"><?php echo date('d M Y', strtotime($article['created_at'])); ?></span>
+                                    </div>
+                                    <h3><?php echo htmlspecialchars($article['title']); ?></h3>
+                                    <p><?php echo htmlspecialchars(substr($article['content'], 0, 150)) . '...'; ?></p>
+                                    <div class="article-actions">
+                                        <button class="btn btn-sm btn-info" onclick="viewArticle(<?php echo $article['id']; ?>)">
+                                            <i class="fas fa-eye"></i> Lihat
+                                        </button>
+                                        <button class="btn btn-sm btn-warning" onclick="editArticle(<?php echo $article['id']; ?>)">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                        <?php if ($article['status'] === 'draft'): ?>
+                                            <button class="btn btn-sm btn-success" onclick="publishArticle(<?php echo $article['id']; ?>)">
+                                                <i class="fas fa-upload"></i> Publish
+                                            </button>
+                                        <?php endif; ?>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteArticle(<?php echo $article['id']; ?>)">
+                                            <i class="fas fa-trash"></i> Hapus
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="no-articles">
+                        <i class="fas fa-newspaper"></i>
+                        <h3>Belum ada artikel</h3>
+                        <p>Mulai buat artikel pertama Anda menggunakan form di atas.</p>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
     </main>
 
@@ -140,589 +314,199 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         function editArticle(id) {
-            // Implementation for editing article
-            alert('Edit artikel ID: ' + id);
+            // Create edit modal or redirect to edit page
+            const article = <?php echo json_encode($articles_data); ?>.find(a => a.id == id);
+            if (article) {
+                // Fill form with article data
+                document.getElementById('title').value = article.title;
+                document.getElementById('content').value = article.content;
+                document.getElementById('category').value = article.category;
+                document.getElementById('status').value = article.status;
+                
+                // Add hidden field for article ID
+                let actionInput = document.querySelector('input[name="action"]');
+                actionInput.value = 'edit';
+                
+                let idInput = document.querySelector('input[name="article_id"]');
+                if (!idInput) {
+                    idInput = document.createElement('input');
+                    idInput.type = 'hidden';
+                    idInput.name = 'article_id';
+                    document.querySelector('.article-form').appendChild(idInput);
+                }
+                idInput.value = id;
+                
+                // Update submit button text
+                const submitBtn = document.querySelector('.article-form button[type="submit"]');
+                submitBtn.innerHTML = '<i class="fas fa-edit"></i> Update Artikel';
+                
+                // Scroll to form
+                document.querySelector('.article-form').scrollIntoView({ behavior: 'smooth' });
+                document.getElementById('title').focus();
+            }
         }
 
         function publishArticle(id) {
             if (confirm('Apakah Anda yakin ingin mempublikasikan artikel ini?')) {
-                // Implementation for publishing article
-                alert('Publish artikel ID: ' + id);
+                // Create form and submit
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `
+                    <input type="hidden" name="action" value="publish">
+                    <input type="hidden" name="article_id" value="${id}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
             }
         }
 
         function deleteArticle(id) {
             if (confirm('Apakah Anda yakin ingin menghapus artikel ini? Tindakan ini tidak dapat dibatalkan.')) {
-                // Implementation for deleting article
-                alert('Hapus artikel ID: ' + id);
+                // Create form and submit
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="article_id" value="${id}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
             }
         }
 
         function resetForm() {
-            document.querySelector('.article-form').reset();
+            if (confirm('Apakah Anda yakin ingin mereset form? Semua data yang telah diisi akan hilang.')) {
+                document.querySelector('.article-form').reset();
+                
+                // Reset action to add
+                document.querySelector('input[name="action"]').value = 'add';
+                
+                // Remove article_id if exists
+                const idInput = document.querySelector('input[name="article_id"]');
+                if (idInput) {
+                    idInput.remove();
+                }
+                
+                // Clear image preview if exists
+                clearImagePreview();
+                
+                // Update submit button text
+                const submitBtn = document.querySelector('.article-form button[type="submit"]');
+                submitBtn.innerHTML = '<i class="fas fa-save"></i> Simpan Artikel';
+            }
         }
 
-        // Preview image upload
+        // Enhanced image preview
         document.getElementById('featured_image').addEventListener('change', function(e) {
             const file = e.target.files[0];
+            const previewContainer = document.querySelector('.image-preview-container') || createPreviewContainer();
+            
             if (file) {
+                // Validate file size (2MB max)
+                if (file.size > 2 * 1024 * 1024) {
+                    alert('Ukuran file terlalu besar. Maksimal 2MB.');
+                    this.value = '';
+                    return;
+                }
+                
+                // Validate file type
+                if (!file.type.match('image.*')) {
+                    alert('File harus berupa gambar (JPG, PNG, GIF).');
+                    this.value = '';
+                    return;
+                }
+                
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    // Create preview if needed
-                    console.log('Image selected:', file.name);
+                    showImagePreview(e.target.result, file.name);
                 }
                 reader.readAsDataURL(file);
+            } else {
+                clearImagePreview();
             }
         });
-    </script>
-
-    <style>
-        /* Article management specific styles */
-        .form-container {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            margin-bottom: 2rem;
-        }        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            align-items: end;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-        }
-
-        .form-group.full-width {
-            grid-column: 1 / -1;
-        }
-
-        .form-group label {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: #374151;
-            font-size: 0.9rem;
-            text-align: left;
-            display: block;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 0.875rem;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.3s ease;
-            box-sizing: border-box;
-            height: 48px;
-            line-height: 1.2;
-        }
-
-        /* Ensure all form controls have exact same dimensions */
-        input.form-control,
-        select.form-control {
-            height: 48px !important;
-            padding: 0.875rem !important;
-            box-sizing: border-box !important;
-            border: 2px solid #e5e7eb !important;
-            border-radius: 8px !important;
-            width: 100% !important;
-            font-size: 1rem !important;
-            line-height: 1.2 !important;
-            vertical-align: top;
-        }
-
-        textarea.form-control {
-            height: auto !important;
-            min-height: 120px;
-            resize: vertical;
-        }
-
-        select.form-control {
-            padding-right: 2.5rem !important;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-            background-position: right 0.75rem center;
-            background-repeat: no-repeat;
-            background-size: 1.5em 1.5em;
-            background-color: white;
-        }
-            font-size: 1rem;
-            transition: border-color 0.3s ease;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .form-text {
-            font-size: 0.8rem;
-            color: #6b7280;
-            margin-top: 0.25rem;
-        }
-
-        textarea.form-control {
-            resize: vertical;
-            min-height: 120px;
-            font-family: inherit;
-        }
-
-        .form-actions {
-            display: flex;
-            gap: 1rem;
-            margin-top: 1.5rem;
-        }
-
-        .articles-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .article-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .article-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        }
-
-        .article-image {
-            position: relative;
-            height: 200px;
-            overflow: hidden;
-        }
-
-        .article-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.3s ease;
-        }
-
-        .article-card:hover .article-image img {
-            transform: scale(1.05);
-        }
-
-        .article-status {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-        }
-
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-        }
-
-        .status-published {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .status-draft {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .article-content {
-            padding: 1.5rem;
-        }
-
-        .article-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            font-size: 0.875rem;
-        }
-
-        .category {
-            background: #e0e7ff;
-            color: #3730a3;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-weight: 600;
-        }
-
-        .date {
-            color: #6b7280;
-        }
-
-        .article-content h3 {
-            font-size: 1.1rem;
-            margin: 0 0 1rem 0;
-            color: #374151;
-            font-weight: 600;
-            line-height: 1.3;
-        }
-
-        .article-content p {
-            color: #6b7280;
-            line-height: 1.5;
-            margin-bottom: 1.5rem;
-        }
-
-        .article-actions {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .btn-sm {
-            padding: 0.5rem 0.75rem;
-            font-size: 0.8rem;
-            border-radius: 6px;
-            white-space: nowrap;
-        }
-
-        .alert {
-            padding: 1rem 1.5rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .alert-success {
-            background: #d1fae5;
-            color: #065f46;
-            border: 1px solid #a7f3d0;
-        }        /* Mobile responsive */
-        @media (max-width: 1024px) {
-            .dashboard-container {
+        
+        function createPreviewContainer() {
+            const container = document.createElement('div');
+            container.className = 'image-preview-container';
+            container.style.cssText = `
+                margin-top: 0.75rem;
                 padding: 1rem;
-            }
-            
-            .form-container {
-                padding: 1.5rem;
-            }
-            
-            .articles-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 1rem;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .dashboard-container {
-                padding: 0.5rem;
-                margin: 0;
-            }
-            
-            .dashboard-header {
-                padding: 1rem;
-                margin-bottom: 1.5rem;
-            }
-            
-            .dashboard-header h1 {
-                font-size: 1.5rem;
-            }
-            
-            .dashboard-section {
-                margin-bottom: 1.5rem;
-            }
-            
-            .dashboard-section h2 {
-                font-size: 1.25rem;
-                padding: 0 0.5rem;
-            }
-
-            .form-container {
-                padding: 1rem;
-                margin: 0 0.5rem 1.5rem 0.5rem;
+                border: 2px dashed #e5e7eb;
                 border-radius: 8px;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-                gap: 0.75rem;
-            }
-
-            .form-control {
-                padding: 1rem;
-                font-size: 1rem;
-                border-radius: 10px;
-            }
-            
-            .form-control[type="file"] {
-                padding: 0.75rem;
-            }
-
-            textarea.form-control {
-                min-height: 120px;
-                resize: vertical;
-            }
-
-            .form-actions {
-                flex-direction: column;
-                gap: 0.75rem;
-                margin-top: 1rem;
-            }
-            
-            .btn {
-                padding: 1rem;
-                font-size: 1rem;
-                min-height: 48px;
-                border-radius: 10px;
-                justify-content: center;
-                touch-action: manipulation;
-            }
-
-            .articles-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-                padding: 0 0.5rem;
-            }
-            
-            .article-card {
-                border-radius: 8px;
-            }
-
-            .article-image {
-                height: 180px;
-            }
-            
-            .article-content {
-                padding: 1rem;
-            }
-            
-            .article-content h3 {
-                font-size: 1rem;
-                line-height: 1.4;
-                margin-bottom: 0.75rem;
-            }
-            
-            .article-content p {
-                font-size: 0.9rem;
-                line-height: 1.4;
-                margin-bottom: 1rem;
-                display: -webkit-box;
-                -webkit-line-clamp: 3;
-                -webkit-box-orient: vertical;
-                overflow: hidden;
-            }
-
-            .article-meta {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 0.5rem;
-                margin-bottom: 1rem;
-            }
-            
-            .status {
-                font-size: 0.8rem;
-                padding: 0.25rem 0.6rem;
-            }
-            
-            .category {
-                font-size: 0.8rem;
-                padding: 0.25rem 0.6rem;
-            }
-            
-            .date {
-                font-size: 0.85rem;
-            }
-
-            .article-actions {
-                justify-content: space-between;
-                gap: 0.5rem;
-            }
-
-            .btn-sm {
-                flex: 1;
-                padding: 0.75rem 0.5rem;
-                font-size: 0.8rem;
-                min-height: 40px;
+                background: #f9fafb;
                 text-align: center;
-                border-radius: 8px;
-            }
+            `;
             
-            .alert {
-                margin: 0 0.5rem 1.5rem 0.5rem;
-                padding: 1rem;
-                border-radius: 8px;
-                font-size: 0.9rem;
+            const fileInput = document.getElementById('featured_image');
+            fileInput.parentNode.appendChild(container);
+            return container;
+        }
+        
+        function showImagePreview(src, filename) {
+            const container = document.querySelector('.image-preview-container') || createPreviewContainer();
+            container.innerHTML = `
+                <div class="image-preview" style="position: relative; display: inline-block;">
+                    <img src="${src}" alt="Preview" style="max-width: 200px; max-height: 150px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <button type="button" onclick="clearImagePreview()" style="
+                        position: absolute;
+                        top: -8px;
+                        right: -8px;
+                        background: #ef4444;
+                        color: white;
+                        border: none;
+                        border-radius: 50%;
+                        width: 24px;
+                        height: 24px;
+                        cursor: pointer;
+                        font-size: 12px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    ">×</button>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #6b7280;">${filename}</p>
+                </div>
+            `;
+        }
+        
+        function clearImagePreview() {
+            const container = document.querySelector('.image-preview-container');
+            if (container) {
+                container.innerHTML = '<p style="color: #9ca3af; margin: 0; font-style: italic;">Tidak ada gambar dipilih</p>';
             }
+            document.getElementById('featured_image').value = '';
         }
 
-        @media (max-width: 480px) {
-            .dashboard-container {
-                padding: 0.25rem;
+        // Form validation
+        document.querySelector('.article-form').addEventListener('submit', function(e) {
+            const title = document.getElementById('title').value.trim();
+            const content = document.getElementById('content').value.trim();
+            const category = document.getElementById('category').value;
+            const status = document.getElementById('status').value;
+            
+            if (!title || !content || !category || !status) {
+                e.preventDefault();
+                alert('Mohon lengkapi semua field yang wajib diisi.');
+                return false;
             }
             
-            .dashboard-header {
-                padding: 0.75rem;
-                margin-bottom: 1rem;
+            if (title.length < 10) {
+                e.preventDefault();
+                alert('Judul artikel minimal 10 karakter.');
+                return false;
             }
             
-            .dashboard-header h1 {
-                font-size: 1.25rem;
+            if (content.length < 50) {
+                e.preventDefault();
+                alert('Konten artikel minimal 50 karakter.');
+                return false;
             }
             
-            .dashboard-section h2 {
-                font-size: 1.1rem;
-                padding: 0 0.25rem;
-            }
-
-            .form-container {
-                padding: 0.75rem;
-                margin: 0 0.25rem 1rem 0.25rem;
-            }
-            
-            .form-control {
-                padding: 0.875rem;
-                font-size: 1rem;
-            }
-            
-            textarea.form-control {
-                min-height: 100px;
-            }
-            
-            .btn {
-                padding: 0.875rem;
-                font-size: 0.9rem;
-            }
-
-            .articles-grid {
-                padding: 0 0.25rem;
-                gap: 0.75rem;
-            }
-            
-            .article-card {
-                border-radius: 6px;
-            }
-            
-            .article-image {
-                height: 160px;
-            }
-
-            .article-content {
-                padding: 0.75rem;
-            }
-            
-            .article-content h3 {
-                font-size: 0.95rem;
-                margin-bottom: 0.5rem;
-            }
-            
-            .article-content p {
-                font-size: 0.85rem;
-                margin-bottom: 0.75rem;
-                -webkit-line-clamp: 2;
-            }
-            
-            .article-meta {
-                gap: 0.4rem;
-                margin-bottom: 0.75rem;
-            }
-
-            .article-actions {
-                flex-direction: column;
-                gap: 0.5rem;
-            }
-
-            .btn-sm {
-                flex: none;
-                width: 100%;
-                padding: 0.75rem;
-                font-size: 0.85rem;
-                min-height: 44px;
-            }
-            
-            .status,
-            .category {
-                font-size: 0.75rem;
-                padding: 0.2rem 0.5rem;
-            }
-            
-            .date {
-                font-size: 0.8rem;
-            }
-            
-            .alert {
-                margin: 0 0.25rem 1rem 0.25rem;
-                padding: 0.75rem;
-                font-size: 0.85rem;
-            }
-        }
-
-        @media (max-width: 360px) {
-            .dashboard-header h1 {
-                font-size: 1.1rem;
-            }
-            
-            .article-image {
-                height: 140px;
-            }
-            
-            .article-content h3 {
-                font-size: 0.9rem;
-            }
-        }
-
-        /* Landscape orientation */
-        @media (max-width: 768px) and (orientation: landscape) {
-            .form-row {
-                grid-template-columns: 1fr 1fr;
-                gap: 0.75rem;
-            }
-            
-            .form-actions {
-                flex-direction: row;
-                gap: 1rem;
-            }
-            
-            .articles-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .article-actions {
-                flex-direction: row;
-                gap: 0.5rem;
-            }
-            
-            .btn-sm {
-                flex: 1;
-            }
-        }
-
-        /* Touch improvements */
-        @media (hover: none) and (pointer: coarse) {
-            .btn:hover,
-            .article-card:hover {
-                transform: none;
-            }
-            
-            .btn:active {
-                transform: scale(0.98);
-            }
-            
-            .article-card:active {
-                transform: scale(0.98);
-            }
-            
-            .form-control:focus {
-                border-color: #667eea;
-                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-            }
-        }
-    </style>
+            // Show loading state on submit button
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+        });
+    </script>
 </body>
 </html>

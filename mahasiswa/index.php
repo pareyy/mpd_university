@@ -199,7 +199,7 @@ $attendance_percentage = $attendance_data['total_absensi'] > 0 ?
     <?php include 'includes/nav_mahasiswa.php'; ?>
 
     <main>
-        <div class="dashboard-container">
+        <div class="dashboard-container dashboard-mahasiswa">
             <div class="page-header">
                 <h1><i class="fas fa-graduation-cap"></i> Dashboard Mahasiswa</h1>
                 <div class="page-info">
@@ -263,38 +263,50 @@ $attendance_percentage = $attendance_data['total_absensi'] > 0 ?
                 <div class="quick-actions">
                     <a href="mata_kuliah.php" class="action-card">
                         <i class="fas fa-book"></i>
-                        <h3>Mata Kuliah</h3>
-                        <p>Lihat mata kuliah dan nilai</p>
+                        <div>
+                            <h3>Mata Kuliah</h3>
+                            <p>Lihat mata kuliah dan nilai</p>
+                        </div>
                     </a>
 
                     <a href="jadwal.php" class="action-card">
                         <i class="fas fa-calendar"></i>
-                        <h3>Jadwal Kuliah</h3>
-                        <p>Cek jadwal kuliah mingguan</p>
+                        <div>
+                            <h3>Jadwal Kuliah</h3>
+                            <p>Cek jadwal kuliah mingguan</p>
+                        </div>
                     </a>
 
                     <a href="nilai.php" class="action-card">
                         <i class="fas fa-chart-line"></i>
-                        <h3>Transkrip Nilai</h3>
-                        <p>Lihat transkrip dan IPK</p>
+                        <div>
+                            <h3>Transkrip Nilai</h3>
+                            <p>Lihat transkrip dan IPK</p>
+                        </div>
                     </a>
 
                     <a href="absensi.php" class="action-card">
                         <i class="fas fa-user-check"></i>
-                        <h3>Absensi</h3>
-                        <p>Rekap kehadiran kuliah</p>
+                        <div>
+                            <h3>Absensi</h3>
+                            <p>Rekap kehadiran kuliah</p>
+                        </div>
                     </a>
 
                     <a href="tugas.php" class="action-card">
                         <i class="fas fa-tasks"></i>
-                        <h3>Tugas</h3>
-                        <p>Kelola tugas dan pengumpulan</p>
+                        <div>
+                            <h3>Tugas</h3>
+                            <p>Kelola tugas dan pengumpulan</p>
+                        </div>
                     </a>
 
                     <a href="profile.php" class="action-card">
                         <i class="fas fa-user-circle"></i>
-                        <h3>Profile</h3>
-                        <p>Kelola informasi personal</p>
+                        <div>
+                            <h3>Profile</h3>
+                            <p>Kelola informasi personal</p>
+                        </div>
                     </a>
                 </div>
             </div>

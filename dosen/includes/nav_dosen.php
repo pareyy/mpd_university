@@ -1,7 +1,7 @@
 <nav>
     <div class="navbar-container">
         <div class="navbar-logo">
-            <img src="../../assets/img/logo.png" width="50px" alt="logo"></img>
+            <img src="../assets/img/logo.png" width="50px" alt="logo"></img>
             Portal Dosen
         </div>
         <div class="navbar-actions">

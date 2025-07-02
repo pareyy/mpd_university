@@ -424,12 +424,13 @@ foreach ($transkrip_data as $semester_grades) {
     <style>
         .academic-summary {
             display: grid;
-            grid-template-columns: 400px 1fr;
+            grid-template-columns: minmax(300px, 400px) 1fr;
             gap: 2rem;
             background: white;
             padding: 2rem;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            align-items: start;
         }
 
         .gpa-card {
@@ -439,6 +440,8 @@ foreach ($transkrip_data as $semester_grades) {
             border-radius: 12px;
             text-align: center;
             position: relative;
+            min-width: 0; /* Prevents overflow */
+            box-sizing: border-box;
         }
 
         .summary-icon {
@@ -750,9 +753,21 @@ foreach ($transkrip_data as $semester_grades) {
             color: #374151;
         }
 
+        @media (max-width: 1024px) {
+            .academic-summary {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            
+            .summary-stats {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
         @media (max-width: 768px) {
             .academic-summary {
                 grid-template-columns: 1fr;
+                padding: 1.5rem;
             }
             
             .summary-stats {

@@ -219,7 +219,7 @@ if ($_POST && isset($_POST['enroll_course'])) {
                     </div>
                     <div class="stat-info">
                         <h3><?php echo count($mata_kuliah_semester_ini); ?></h3>
-                        <p class="stat-number">Mata Kuliah Diambil</p>
+                        <p>Mata Kuliah Diambil</p>
                     </div>
                 </div>
 
@@ -229,8 +229,7 @@ if ($_POST && isset($_POST['enroll_course'])) {
                     </div>
                     <div class="stat-info">
                         <h3><?php echo $total_sks_semester; ?></h3>
-                        <p class="stat-number">Total SKS</p>
-                        <small>SKS semester ini</small>
+                        <p>Total SKS</p>
                     </div>
                 </div>
 
@@ -240,7 +239,7 @@ if ($_POST && isset($_POST['enroll_course'])) {
                     </div>
                     <div class="stat-info">
                         <h3><?php echo $ipk_semester; ?></h3>
-                        <p class="stat-number">IPK Semester</p>
+                        <p>IPK Semester</p>
                     </div>
                 </div>
 
@@ -250,7 +249,7 @@ if ($_POST && isset($_POST['enroll_course'])) {
                     </div>
                     <div class="stat-info">
                         <h3><?php echo $progress_percentage; ?>%</h3>
-                        <p class="stat-number">Progress</p>
+                        <p>Progress</p>
                     </div>
                 </div>
             </div>

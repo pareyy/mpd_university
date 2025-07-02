@@ -87,6 +87,78 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $message_type = 'error';
             }
         }
+        
+        elseif ($_POST['action'] == 'edit') {
+            $dosen_id = (int)$_POST['dosen_id'];
+            $nip = mysqli_real_escape_string($conn, $_POST['nip']);
+            $nama = mysqli_real_escape_string($conn, $_POST['nama']);
+            $email = mysqli_real_escape_string($conn, $_POST['email']);
+            $bidang_keahlian = mysqli_real_escape_string($conn, $_POST['bidang_keahlian']);
+            
+            // Update dosen table
+            $update_dosen = "UPDATE dosen SET 
+                            nidn = '$nip', 
+                            nama = '$nama', 
+                            email = '$email', 
+                            bidang_keahlian = '$bidang_keahlian' 
+                            WHERE id = $dosen_id";
+            
+            if (mysqli_query($conn, $update_dosen)) {
+                // Update users table if user_id exists
+                $get_user_id = "SELECT user_id FROM dosen WHERE id = $dosen_id";
+                $user_result = mysqli_query($conn, $get_user_id);
+                $user_data = mysqli_fetch_assoc($user_result);
+                
+                if ($user_data && $user_data['user_id']) {
+                    $update_user = "UPDATE users SET 
+                                   username = '$nip', 
+                                   full_name = '$nama', 
+                                   email = '$email' 
+                                   WHERE id = " . $user_data['user_id'];
+                    mysqli_query($conn, $update_user);
+                }
+                
+                $message = "Data dosen berhasil diperbarui!";
+                $message_type = 'success';
+                
+                // Refresh data
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit();
+            } else {
+                $message = "Error: " . mysqli_error($conn);
+                $message_type = 'error';
+            }
+        }
+        
+        elseif ($_POST['action'] == 'delete') {
+            $dosen_id = (int)$_POST['dosen_id'];
+            
+            // Get user_id before deleting
+            $get_user_id = "SELECT user_id FROM dosen WHERE id = $dosen_id";
+            $user_result = mysqli_query($conn, $get_user_id);
+            $user_data = mysqli_fetch_assoc($user_result);
+            
+            // Delete from dosen table
+            $delete_dosen = "DELETE FROM dosen WHERE id = $dosen_id";
+            
+            if (mysqli_query($conn, $delete_dosen)) {
+                // Delete from users table if user_id exists
+                if ($user_data && $user_data['user_id']) {
+                    $delete_user = "DELETE FROM users WHERE id = " . $user_data['user_id'];
+                    mysqli_query($conn, $delete_user);
+                }
+                
+                $message = "Dosen berhasil dihapus!";
+                $message_type = 'success';
+                
+                // Refresh data
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit();
+            } else {
+                $message = "Error: " . mysqli_error($conn);
+                $message_type = 'error';
+            }
+        }
     }
 }
 ?>
@@ -99,6 +171,130 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        .modal-header {
+            padding: 1.5rem 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .close {
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .close:hover {
+            opacity: 1;
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .modal-footer {
+            padding: 1.5rem 2rem;
+            background: #f8fafc;
+            border-radius: 0 0 12px 12px;
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .detail-item label {
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.875rem;
+        }
+
+        .detail-item span {
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .modal-content {
+                width: 95%;
+                margin: 2% auto;
+            }
+
+            .detail-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .modal-footer {
+                flex-direction: column;
+            }
+
+            .modal-footer .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
 </head>
 <body>
     <?php include 'includes/nav_admin.php'; ?>
@@ -203,15 +399,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         <td><?php echo htmlspecialchars($dosen['fakultas'] ?? 'Belum ditentukan'); ?></td>
                                         <td>
                                             <div class="action-buttons">
-                                                <button class="btn btn-sm btn-info" onclick="viewLecturer(<?php echo $dosen['id']; ?>)">
+                                                <button class="btn btn-sm btn-info" onclick="viewLecturer(<?php echo $dosen['id']; ?>, '<?php echo addslashes($dosen['nama']); ?>', '<?php echo addslashes($dosen['nip']); ?>', '<?php echo addslashes($dosen['email']); ?>', '<?php echo addslashes($dosen['bidang_keahlian']); ?>', '<?php echo addslashes($dosen['fakultas'] ?? 'Belum ditentukan'); ?>')">
                                                     <i class="fas fa-eye"></i>
                                                 </button>
-                                                <button class="btn btn-sm btn-warning" onclick="editLecturer(<?php echo $dosen['id']; ?>)">
+                                                <button class="btn btn-sm btn-warning" onclick="editLecturer(<?php echo $dosen['id']; ?>, '<?php echo addslashes($dosen['nama']); ?>', '<?php echo addslashes($dosen['nip']); ?>', '<?php echo addslashes($dosen['email']); ?>', '<?php echo addslashes($dosen['bidang_keahlian']); ?>')">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
-                                                <button class="btn btn-sm btn-danger" onclick="deleteLecturer(<?php echo $dosen['id']; ?>)">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
+                                                <form method="POST" style="display: inline;" onsubmit="return confirmDelete('<?php echo addslashes($dosen['nama']); ?>')">
+                                                    <input type="hidden" name="action" value="delete">
+                                                    <input type="hidden" name="dosen_id" value="<?php echo $dosen['id']; ?>">
+                                                    <button type="submit" class="btn btn-sm btn-danger">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
                                             </div>
                                         </td>
                                     </tr>
@@ -224,26 +424,168 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </main>
 
+    <!-- View Lecturer Modal -->
+    <div id="viewModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user"></i> Detail Dosen</h3>
+                <span class="close" onclick="closeModal('viewModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <label>NIP/NIDN:</label>
+                        <span id="viewNip"></span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Nama Lengkap:</label>
+                        <span id="viewNama"></span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Email:</label>
+                        <span id="viewEmail"></span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Bidang Keahlian:</label>
+                        <span id="viewBidang"></span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Fakultas:</label>
+                        <span id="viewFakultas"></span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Status:</label>
+                        <span class="badge badge-success">Aktif</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('viewModal')">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Lecturer Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> Edit Dosen</h3>
+                <span class="close" onclick="closeModal('editModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form method="POST" id="editForm">
+                    <input type="hidden" name="action" value="edit">
+                    <input type="hidden" name="dosen_id" id="editDosenId">
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="editNip">NIP/NIDN</label>
+                            <input type="text" id="editNip" name="nip" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editNama">Nama Lengkap</label>
+                            <input type="text" id="editNama" name="nama" class="form-control" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="editEmail">Email</label>
+                            <input type="email" id="editEmail" name="email" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editBidang">Bidang Keahlian</label>
+                            <select id="editBidang" name="bidang_keahlian" class="form-control" required>
+                                <option value="">Pilih Bidang Keahlian</option>
+                                <option value="Web Development">Web Development</option>
+                                <option value="Mobile Development">Mobile Development</option>
+                                <option value="Database Systems">Database Systems</option>
+                                <option value="Artificial Intelligence">Artificial Intelligence</option>
+                                <option value="Software Engineering">Software Engineering</option>
+                                <option value="Network Security">Network Security</option>
+                                <option value="Data Science">Data Science</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('editModal')">Batal</button>
+                <button class="btn btn-primary" onclick="document.getElementById('editForm').submit()">
+                    <i class="fas fa-save"></i> Simpan Perubahan
+                </button>
+            </div>
+        </div>
+    </div>
+
     <?php include '../includes/footer.php'; ?>
 
     <script>
-        function viewLecturer(id) {
-            alert('Lihat detail dosen ID: ' + id);
+        function viewLecturer(id, nama, nip, email, bidang, fakultas) {
+            document.getElementById('viewNip').textContent = nip;
+            document.getElementById('viewNama').textContent = nama;
+            document.getElementById('viewEmail').textContent = email;
+            document.getElementById('viewBidang').textContent = bidang;
+            document.getElementById('viewFakultas').textContent = fakultas;
+            
+            document.getElementById('viewModal').style.display = 'block';
         }
 
-        function editLecturer(id) {
-            alert('Edit dosen ID: ' + id);
+        function editLecturer(id, nama, nip, email, bidang) {
+            document.getElementById('editDosenId').value = id;
+            document.getElementById('editNip').value = nip;
+            document.getElementById('editNama').value = nama;
+            document.getElementById('editEmail').value = email;
+            document.getElementById('editBidang').value = bidang;
+            
+            document.getElementById('editModal').style.display = 'block';
         }
 
-        function deleteLecturer(id) {
-            if (confirm('Apakah Anda yakin ingin menghapus dosen ini?')) {
-                alert('Hapus dosen ID: ' + id);
-            }
+        function confirmDelete(nama) {
+            return confirm('Apakah Anda yakin ingin menghapus dosen "' + nama + '"?\n\nPerhatian: Tindakan ini tidak dapat dibatalkan!');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
         }
 
         function resetForm() {
             document.querySelector('.lecturer-form').reset();
         }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const viewModal = document.getElementById('viewModal');
+            const editModal = document.getElementById('editModal');
+            
+            if (event.target === viewModal) {
+                viewModal.style.display = 'none';
+            }
+            if (event.target === editModal) {
+                editModal.style.display = 'none';
+            }
+        }
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeModal('viewModal');
+                closeModal('editModal');
+            }
+        });
+
+        // Auto-hide alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                setTimeout(function() {
+                    alert.style.opacity = '0';
+                    setTimeout(function() {
+                        alert.style.display = 'none';
+                    }, 300);
+                }, 5000);
+            });
+        });
     </script>
 </body>
 </html>

@@ -819,6 +819,497 @@ select.form-control {
     color: #065f46;
 }
 
+/* Faculty/Dosen Terkemuka Slider Styles */
+.faculty-slider-container {
+    position: relative;
+    overflow: hidden;
+    margin: 2rem auto;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    padding: 2rem;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.faculty-slider-track {
+    display: flex;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 1.5rem;
+    align-items: stretch;
+    width: auto;
+    will-change: transform;
+    box-sizing: border-box;
+}
+
+.faculty-card {
+    flex: 0 0 auto;
+    background: linear-gradient(145deg, #ffffff 0%, #fefefe 100%);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    min-height: 420px;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+.faculty-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.faculty-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 8px 20px rgba(0, 0, 0, 0.08);
+    border-color: #10b981;
+}
+
+.faculty-image {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 1.5rem;
+    border-radius: 50%;
+    overflow: hidden;
+    position: relative;
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    border: 4px solid #ffffff;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.faculty-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: transform 0.3s ease;
+}
+
+.faculty-card:hover .faculty-image img {
+    transform: scale(1.05);
+}
+
+.faculty-info {
+    text-align: center;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.faculty-info h4 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    color: #1f2937;
+    line-height: 1.3;
+}
+
+.faculty-title {
+    color: #10b981;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin: 0 0 1rem 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.faculty-specialty {
+    color: #6b7280;
+    font-size: 0.9rem;
+    margin: 0 0 0.75rem 0;
+    line-height: 1.4;
+    flex: 1;
+}
+
+.faculty-nidn {
+    color: #9ca3af;
+    font-size: 0.85rem;
+    margin: 0 0 1rem 0;
+    font-weight: 500;
+}
+
+.faculty-contact {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid #f3f4f6;
+}
+
+.faculty-contact p {
+    margin: 0.25rem 0;
+    font-size: 0.8rem;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.faculty-contact i {
+    color: #10b981;
+    width: 14px;
+}
+
+/* Faculty Slider Navigation */
+.faculty-slider-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid #f3f4f6;
+    flex-wrap: wrap;
+}
+
+.slider-button {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    flex-shrink: 0;
+}
+
+.slider-button:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.slider-button:disabled {
+    background: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    opacity: 0.6;
+}
+
+.slider-dots {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.slider-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #d1d5db;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    padding: 0;
+}
+
+.slider-dot.active {
+    background: #10b981;
+    transform: scale(1.2);
+}
+
+.slider-dot:hover {
+    background: #6b7280;
+}
+
+/* Fix for better mobile experience */
+@media (max-width: 768px) {
+    .faculty-slider-navigation {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .slider-button {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+
+    .slider-dots {
+        order: -1; /* Put dots above buttons on mobile */
+    }
+}
+
+/* Ensure slider container doesn't cause issues */
+.faculty-slider-container *,
+.faculty-slider-container *::before,
+.faculty-slider-container *::after {
+    box-sizing: border-box;
+}
+
+.faculty-slider-track {
+    will-change: transform;
+}
+
+/* Fakultas Grid Styles */
+.fakultas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin: 2rem 0;
+}
+
+.fakultas-card {
+    background: linear-gradient(145deg, #ffffff 0%, #fefefe 100%);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.fakultas-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.fakultas-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 8px 20px rgba(0, 0, 0, 0.08);
+    border-color: #667eea;
+}
+
+.fakultas-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f3f4f6;
+}
+
+.fakultas-header h5 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0 0 0.75rem 0;
+    color: #1f2937;
+    line-height: 1.3;
+}
+
+.prodi-count {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.fakultas-content {
+    color: #6b7280;
+    line-height: 1.6;
+}
+
+.dekan-info {
+    margin-bottom: 1.25rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 8px;
+    border-left: 4px solid #10b981;
+}
+
+.dekan-info strong {
+    color: #374151;
+}
+
+.prodi-list {
+    margin-top: 1rem;
+}
+
+.prodi-list strong {
+    color: #374151;
+    display: block;
+    margin-bottom: 0.75rem;
+}
+
+.prodi-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.prodi-list li {
+    padding: 0.5rem 0.75rem;
+    margin: 0.25rem 0;
+    background: white;
+    border-radius: 6px;
+    border-left: 3px solid #10b981;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.prodi-list li:hover {
+    background: #f0fdf4;
+    transform: translateX(4px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Profile Page Header Styles */
+.school-logo {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    margin-bottom: 1rem;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
+    transition: transform 0.3s ease;
+}
+
+.school-logo:hover {
+    transform: scale(1.05);
+}
+
+.hero-subtitle {
+    font-size: 1.2rem;
+    color: #6b7280;
+    font-weight: 500;
+    margin-bottom: 2rem;
+    font-style: italic;
+}
+
+.text-primary {
+    color: #2563eb !important;
+    font-weight: 600;
+}
+
+.hero-description {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: #4b5563;
+    margin-bottom: 1.5rem;
+    text-align: justify;
+}
+
+.mt-3 {
+    margin-top: 1rem;
+}
+
+.mt-4 {
+    margin-top: 1.5rem;
+}
+
+.mt-5 {
+    margin-top: 2rem;
+}
+
+.mb-4 {
+    margin-bottom: 1.5rem;
+}
+
+.pt-4 {
+    padding-top: 1.5rem;
+}
+
+.border-top {
+    border-top: 2px solid #e5e7eb;
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* Responsive adjustments for profile header */
+@media (max-width: 768px) {
+    .school-logo {
+        width: 100px;
+        height: 100px;
+    }
+
+    .hero-subtitle {
+        font-size: 1.1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .hero-description {
+        font-size: 0.95rem;
+        text-align: left;
+    }
+
+    .container {
+        padding: 1.5rem 1rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .school-logo {
+        width: 80px;
+        height: 80px;
+    }
+
+    .hero-subtitle {
+        font-size: 1rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .hero-description {
+        font-size: 0.9rem;
+    }
+
+    .container h1 {
+        font-size: 2rem;
+    }
+
+    .container h3 {
+        font-size: 1.5rem;
+    }
+
+    .container h4 {
+        font-size: 1.25rem;
+    }
+}
+
+@media (max-width: 400px) {
+    .school-logo {
+        width: 70px;
+        height: 70px;
+    }
+
+    .hero-subtitle {
+        font-size: 0.95rem;
+    }
+
+    .hero-description {
+        font-size: 0.85rem;
+    }
+
+    .container {
+        padding: 1rem 0.75rem;
+    }
+
+    .container h1 {
+        font-size: 1.75rem;
+    }
+
+    .container h3 {
+        font-size: 1.25rem;
+    }
+
+    .container h4 {
+        font-size: 1.125rem;
+    }
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
     .profile-layout {
@@ -898,6 +1389,12 @@ select.form-control {
         width: 100%;
         justify-content: center;
     }
+
+    .faculty-card {
+        width: 100%;
+        min-height: 380px;
+        padding: 1.25rem;
+    }
 }
 
 @media (max-width: 480px) {
@@ -940,19 +1437,95 @@ select.form-control {
     .btn:hover,
     .stat-card:hover,
     .action-card:hover,
-    .stat-item:hover {
+    .stat-item:hover,
+    .faculty-card:hover {
         transform: none;
     }
 
     .btn:active,
     .stat-card:active,
     .action-card:active,
-    .stat-item:active {
+    .stat-item:active,
+    .faculty-card:active {
         transform: scale(0.98);
     }
 
     .form-control:focus {
         border-color: #667eea;
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    }
+}
+
+/* Faculty Slider Responsive Fixes */
+@media (max-width: 480px) {
+    .faculty-slider-container {
+        padding: 1rem !important;
+        margin: 1rem auto !important;
+        max-width: calc(100% - 2rem) !important;
+    }
+
+    .faculty-card {
+        min-height: 360px !important;
+        padding: 1rem !important;
+    }
+
+    .faculty-slider-track {
+        gap: 1rem !important;
+    }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+    .faculty-slider-container {
+        padding: 1.5rem !important;
+        margin: 1.5rem auto !important;
+        max-width: calc(100% - 1rem) !important;
+    }
+
+    .faculty-card {
+        min-height: 380px !important;
+    }
+
+    .faculty-slider-track {
+        gap: 1.25rem !important;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .faculty-slider-container {
+        padding: 1.75rem !important;
+        margin: 2rem auto !important;
+        max-width: 100% !important;
+    }
+
+    .faculty-card {
+        min-height: 400px !important;
+    }
+}
+
+@media (min-width: 1025px) {
+    .faculty-slider-container {
+        padding: 2rem !important;
+        margin: 2rem auto !important;
+        max-width: 100% !important;
+    }
+
+    .faculty-card {
+        min-height: 420px !important;
+    }
+}
+
+/* Faculty Slider Container Constraints */
+.container .faculty-slider-container {
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+}
+
+/* Ensure faculty slider respects container bounds */
+@media (max-width: 1200px) {
+    .faculty-slider-container {
+        margin-left: 0;
+        margin-right: 0;
     }
 }

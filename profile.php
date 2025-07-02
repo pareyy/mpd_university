@@ -52,8 +52,8 @@ $stats = mysqli_fetch_assoc($stats_result);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profil Universitas - MPD University</title>
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="assets/css/profile.css">
+    <link rel="stylesheet" href="assets/css/style.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="assets/css/profile.css?v=<?php echo time(); ?>">
     <!-- Font Awesome CDN for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Remixicon for additional icons -->
@@ -170,23 +170,80 @@ $stats = mysqli_fetch_assoc($stats_result);
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM Content Loaded - Initializing Faculty Slider');
+            
             const track = document.getElementById('facultySliderTrack');
             const cards = track ? track.querySelectorAll('.faculty-card') : [];
             const dotsContainer = document.getElementById('sliderDots');
             const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
+            const container = document.querySelector('.faculty-slider-container');
             
-            if (cards.length === 0) return;
+            console.log('Faculty cards found:', cards.length);
+            
+            if (cards.length === 0) {
+                console.log('No faculty cards found, exiting slider initialization');
+                return;
+            }
             
             let currentSlide = 0;
             let slidesToShow = getCardsToShow();
+            let autoSlideInterval;
+            
+            function getCardsToShow() {
+                const width = window.innerWidth;
+                if (width <= 768) return 1;
+                if (width <= 1024) return 2;
+                return Math.min(3, cards.length); // Don't show more cards than available
+            }
+            
+            function getCardWidth() {
+                if (!container) return 300;
+                
+                const containerWidth = container.offsetWidth;
+                const containerPadding = 64; // 2rem padding on each side
+                const gapWidth = 24; // 1.5rem gap between cards
+                
+                const availableWidth = containerWidth - containerPadding;
+                const totalGaps = (slidesToShow - 1) * gapWidth;
+                const cardWidth = Math.floor((availableWidth - totalGaps) / slidesToShow);
+                
+                console.log('Container width:', containerWidth);
+                console.log('Available width:', availableWidth);
+                console.log('Cards to show:', slidesToShow);
+                console.log('Calculated card width:', cardWidth);
+                
+                return Math.max(250, cardWidth); // Minimum width of 250px
+            }
+            
+            function updateCardStyles() {
+                const cardWidth = getCardWidth();
+                console.log('Updating card width to:', cardWidth + 'px');
+                
+                cards.forEach((card, index) => {
+                    card.style.width = cardWidth + 'px';
+                    card.style.flexShrink = '0';
+                    card.style.flexGrow = '0';
+                    card.style.minWidth = cardWidth + 'px';
+                    card.style.maxWidth = cardWidth + 'px';
+                });
+                
+                // Update track width to accommodate all cards
+                const gapWidth = 24;
+                const totalWidth = (cards.length * cardWidth) + ((cards.length - 1) * gapWidth);
+                track.style.width = totalWidth + 'px';
+                
+                console.log('Track width set to:', totalWidth + 'px');
+            }
             
             function createDots() {
                 if (!dotsContainer) return;
                 dotsContainer.innerHTML = '';
-                const numDots = Math.ceil(cards.length / slidesToShow);
                 
-                for (let i = 0; i < numDots; i++) {
+                const maxSlides = Math.max(1, Math.ceil(cards.length / slidesToShow));
+                console.log('Creating', maxSlides, 'dots for', cards.length, 'cards');
+                
+                for (let i = 0; i < maxSlides; i++) {
                     const dot = document.createElement('span');
                     dot.classList.add('slider-dot');
                     if (i === currentSlide) dot.classList.add('active');
@@ -196,65 +253,152 @@ $stats = mysqli_fetch_assoc($stats_result);
                 }
             }
             
-            function getCardsToShow() {
-                if (window.innerWidth < 768) {
-                    return 1;
-                } else if (window.innerWidth < 1024) {
-                    return 2;
-                } else {
-                    return 3;
-                }
-            }
-            
             function goToSlide(slideIndex) {
-                const maxSlide = Math.ceil(cards.length / slidesToShow) - 1;
+                const maxSlides = Math.max(1, Math.ceil(cards.length / slidesToShow));
+                const maxSlide = maxSlides - 1;
+                
                 currentSlide = Math.max(0, Math.min(slideIndex, maxSlide));
                 
-                const slideWidth = cards[0].offsetWidth + parseInt(getComputedStyle(cards[0]).marginRight);
-                const offset = -currentSlide * slideWidth * slidesToShow;
+                console.log('Going to slide:', currentSlide, 'of', maxSlide, '(total slides:', maxSlides, ')');
+                console.log('Total cards:', cards.length, 'Cards per slide:', slidesToShow);
                 
-                track.style.transform = `translateX(${offset}px)`;
+                const cardWidth = getCardWidth();
+                const gapWidth = 24;
                 
-                const dots = dotsContainer.querySelectorAll('.slider-dot');
+                // Calculate exact offset based on current slide
+                let offset = 0;
+                if (currentSlide > 0) {
+                    const slideWidth = slidesToShow * cardWidth + (slidesToShow - 1) * gapWidth;
+                    offset = -(currentSlide * slideWidth);
+                }
+                
+                console.log('Card width:', cardWidth, 'Gap width:', gapWidth, 'Offset:', offset);
+                
+                // Apply transform with error handling
+                try {
+                    track.style.transform = `translateX(${offset}px)`;
+                    console.log('Transform applied successfully');
+                } catch (error) {
+                    console.error('Error applying transform:', error);
+                }
+                
+                // Update dots
+                const dots = dotsContainer ? dotsContainer.querySelectorAll('.slider-dot') : [];
                 dots.forEach((dot, i) => {
                     dot.classList.toggle('active', i === currentSlide);
                 });
                 
-                if (prevBtn) prevBtn.disabled = currentSlide === 0;
-                if (nextBtn) nextBtn.disabled = currentSlide === maxSlide;
+                // Update button states
+                if (prevBtn) {
+                    prevBtn.disabled = currentSlide === 0;
+                    prevBtn.style.opacity = currentSlide === 0 ? '0.5' : '1';
+                }
+                if (nextBtn) {
+                    nextBtn.disabled = currentSlide === maxSlide;
+                    nextBtn.style.opacity = currentSlide === maxSlide ? '0.5' : '1';
+                }
             }
             
+            function initSlider() {
+                console.log('Initializing slider with', cards.length, 'cards');
+                slidesToShow = getCardsToShow();
+                console.log('Cards to show:', slidesToShow);
+                
+                // Set initial track styles
+                track.style.display = 'flex';
+                track.style.gap = '1.5rem';
+                track.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+                track.style.alignItems = 'stretch';
+                
+                updateCardStyles();
+                createDots();
+                goToSlide(0);
+                
+                console.log('Slider initialization complete');
+            }
+            
+            // Event listeners
             if (prevBtn) {
                 prevBtn.addEventListener('click', () => {
+                    console.log('Previous button clicked');
                     goToSlide(currentSlide - 1);
                 });
             }
             
             if (nextBtn) {
                 nextBtn.addEventListener('click', () => {
+                    console.log('Next button clicked');
                     goToSlide(currentSlide + 1);
                 });
             }
             
-            function initSlider() {
-                slidesToShow = getCardsToShow();
-                
-                cards.forEach(card => {
-                    card.style.width = `calc(100% / ${slidesToShow} - 20px)`;
-                });
-                
-                createDots();
-                goToSlide(0);
-            }
-            
+            // Handle window resize
+            let resizeTimeout;
             window.addEventListener('resize', () => {
-                const newSlidesToShow = getCardsToShow();
-                if (newSlidesToShow !== slidesToShow) {
-                    initSlider();
-                }
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    console.log('Window resized, re-initializing slider');
+                    const newSlidesToShow = getCardsToShow();
+                    if (newSlidesToShow !== slidesToShow) {
+                        slidesToShow = newSlidesToShow;
+                        currentSlide = 0; // Reset to first slide when layout changes
+                        initSlider();
+                    } else {
+                        updateCardStyles();
+                        const maxSlides = Math.ceil(cards.length / slidesToShow);
+                        goToSlide(Math.min(currentSlide, maxSlides - 1));
+                    }
+                }, 300);
             });
             
-            initSlider();
+            // Auto-slide functionality
+            function startAutoSlide() {
+                stopAutoSlide();
+                autoSlideInterval = setInterval(() => {
+                    const maxSlides = Math.ceil(cards.length / slidesToShow);
+                    const nextSlideIndex = currentSlide < maxSlides - 1 ? currentSlide + 1 : 0;
+                    goToSlide(nextSlideIndex);
+                }, 6000); // Increased to 6 seconds for better UX
+            }
+            
+            function stopAutoSlide() {
+                if (autoSlideInterval) {
+                    clearInterval(autoSlideInterval);
+                    autoSlideInterval = null;
+                }
+            }
+            
+            // Pause auto-slide on hover
+            if (container) {
+                container.addEventListener('mouseenter', stopAutoSlide);
+                container.addEventListener('mouseleave', startAutoSlide);
+            }
+            
+            // Initialize slider with small delay to ensure DOM is ready
+            setTimeout(() => {
+                // Double check that elements exist before initializing
+                if (cards.length > 0 && container) {
+                    console.log('Starting slider initialization...');
+                    initSlider();
+                    
+                    // Only start auto-slide if we have more than one slide
+                    const maxSlides = Math.ceil(cards.length / slidesToShow);
+                    if (maxSlides > 1) {
+                        startAutoSlide();
+                        console.log('Auto-slide started');
+                    } else {
+                        console.log('Only one slide, auto-slide disabled');
+                        // Hide navigation if only one slide
+                        if (prevBtn) prevBtn.style.display = 'none';
+                        if (nextBtn) nextBtn.style.display = 'none';
+                        if (dotsContainer) dotsContainer.style.display = 'none';
+                    }
+                } else {
+                    console.error('Slider initialization failed: missing elements');
+                    console.log('Cards count:', cards.length);
+                    console.log('Container exists:', !!container);
+                }
+            }, 200); // Slightly longer delay for stability
         });
     </script>
 </body>

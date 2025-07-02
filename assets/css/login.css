@@ -33,7 +33,7 @@
 }
 
 .login-container {
-    max-width: 400px;
+    max-width: 500px;
     width: 100%;
     background: rgba(255, 255, 255, 0.9);
     padding: 2rem;
@@ -92,4 +92,170 @@
 main {
     margin: 0;
     padding: 0;
+}
+
+/* Demo Accounts Card Styles */
+.demo-accounts-card {
+    margin-top: 2rem;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.demo-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    color: #2563eb;
+}
+
+.demo-header i {
+    font-size: 1.2rem;
+}
+
+.demo-header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.demo-description {
+    margin: 0 0 1.25rem 0;
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.demo-accounts-grid {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.demo-account-item {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.demo-account-item::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.demo-account-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.15);
+    border-color: #2563eb;
+}
+
+.demo-account-item:hover::before {
+    transform: scaleX(1);
+}
+
+.demo-role {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.demo-role i {
+    color: #2563eb;
+    width: 18px;
+    text-align: center;
+}
+
+.demo-credentials {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.credential-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+}
+
+.credential-item label {
+    color: #6b7280;
+    font-weight: 500;
+    margin: 0;
+}
+
+.credential-value {
+    background: #e0e7ff !important;
+    color: #3730a3 !important;
+    padding: 0.25rem 0.5rem !important;
+    border-radius: 4px !important;
+    font-family: "Courier New", "Consolas", "Monaco", monospace !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    border: 1px solid transparent !important;
+    display: inline-block !important;
+    min-width: 80px !important;
+    text-align: center !important;
+}
+
+.credential-value:hover {
+    background: #c7d2fe;
+    border-color: #6366f1;
+    transform: scale(1.05);
+}
+
+.demo-note {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+    color: #6b7280;
+    font-size: 0.8rem;
+}
+
+.demo-note i {
+    color: #f59e0b;
+}
+
+/* Responsive for demo card */
+@media (max-width: 480px) {
+    .login-container {
+        max-width: 350px;
+        padding: 1.5rem;
+    }
+
+    .demo-accounts-card {
+        padding: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .credential-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+
+    .credential-value {
+        width: 100%;
+        text-align: center;
+    }
 }

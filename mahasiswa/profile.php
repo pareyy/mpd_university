@@ -220,8 +220,8 @@ $emergency_contact = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profil - Portal Mahasiswa MPD University</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/mahasiswa.css">
+    <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="../assets/css/mahasiswa_clean.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -553,13 +553,15 @@ $emergency_contact = [
                     'avatar-9.svg' => 'https://api.dicebear.com/7.x/open-peeps/svg?seed=character9&size=150&backgroundColor=f8f9fa&clothing=hoodie,shirt,cardigan&clothingColor=ffe66d,ff6b6b,2c3e50'
                 ];
                 
+                $index = 0;
                 foreach ($vector_avatars as $filename => $url) {
-                    echo "<div class='photo-option' onclick='selectPhoto(\"$filename\", \"$url\")'>";
-                    echo "<img src='$url' alt='Avatar Option'>";
+                    echo "<div class='photo-option' id='photo-{$index}' data-filename='{$filename}' data-url='{$url}'>";
+                    echo "<img src='{$url}' alt='Avatar Option'>";
                     echo "<div class='photo-overlay'>";
                     echo "<i class='fas fa-check'></i>";
                     echo "</div>";
                     echo "</div>";
+                    $index++;
                 }
                 ?>
             </div>
@@ -603,8 +605,13 @@ $emergency_contact = [
                 option.classList.remove('selected');
             });
             
-            // Add selection to clicked photo
-            event.currentTarget.classList.add('selected');
+            // Find and select the clicked photo
+            const photoOptions = document.querySelectorAll('.photo-option');
+            photoOptions.forEach(option => {
+                if (option.onclick.toString().includes(filename)) {
+                    option.classList.add('selected');
+                }
+            });
             
             selectedPhoto = filename;
             document.getElementById('savePhotoBtn').disabled = false;
@@ -616,6 +623,31 @@ $emergency_contact = [
                 document.getElementById('photoUpdateForm').submit();
             }
         }
+
+        // Event delegation for photo selection
+        document.addEventListener('DOMContentLoaded', function() {
+            const photoGrid = document.querySelector('.photo-grid');
+            if (photoGrid) {
+                photoGrid.addEventListener('click', function(event) {
+                    const photoOption = event.target.closest('.photo-option');
+                    if (photoOption) {
+                        const filename = photoOption.getAttribute('data-filename');
+                        const url = photoOption.getAttribute('data-url');
+                        
+                        // Remove previous selection
+                        document.querySelectorAll('.photo-option').forEach(option => {
+                            option.classList.remove('selected');
+                        });
+                        
+                        // Add selection to clicked photo
+                        photoOption.classList.add('selected');
+                        
+                        selectedPhoto = filename;
+                        document.getElementById('savePhotoBtn').disabled = false;
+                    }
+                });
+            }
+        });
 
         // Close modal when clicking outside
         window.onclick = function(event) {

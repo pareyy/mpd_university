@@ -193,7 +193,7 @@ if ($_POST && isset($_POST['enroll_course'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mata Kuliah - MPD University</title>
     <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/mahasiswa.css">
+    <link rel="stylesheet" href="../assets/css/mahasiswa_clean.css?v=<?php echo time(); ?>">
     <!-- Font Awesome CDN for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -219,7 +219,7 @@ if ($_POST && isset($_POST['enroll_course'])) {
                     </div>
                     <div class="stat-info">
                         <h3><?php echo count($mata_kuliah_semester_ini); ?></h3>
-                        <p class="stat-number">Mata Kuliah Diambil</p>
+                        <p>Mata Kuliah Diambil</p>
                     </div>
                 </div>
 
@@ -229,8 +229,7 @@ if ($_POST && isset($_POST['enroll_course'])) {
                     </div>
                     <div class="stat-info">
                         <h3><?php echo $total_sks_semester; ?></h3>
-                        <p class="stat-number">Total SKS</p>
-                        <small>SKS semester ini</small>
+                        <p>Total SKS</p>
                     </div>
                 </div>
 
@@ -240,7 +239,7 @@ if ($_POST && isset($_POST['enroll_course'])) {
                     </div>
                     <div class="stat-info">
                         <h3><?php echo $ipk_semester; ?></h3>
-                        <p class="stat-number">IPK Semester</p>
+                        <p>IPK Semester</p>
                     </div>
                 </div>
 
@@ -250,7 +249,7 @@ if ($_POST && isset($_POST['enroll_course'])) {
                     </div>
                     <div class="stat-info">
                         <h3><?php echo $progress_percentage; ?>%</h3>
-                        <p class="stat-number">Progress</p>
+                        <p>Progress</p>
                     </div>
                 </div>
             </div>

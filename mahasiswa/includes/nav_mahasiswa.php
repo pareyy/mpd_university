@@ -1,7 +1,7 @@
 <nav>
     <div class="navbar-container">
         <div class="navbar-logo">
-            <i class="fa-solid fa-graduation-cap"></i> MPD University - Portal Mahasiswa
+            <i class="fa-solid fa-graduation-cap"></i> Portal Mahasiswa
         </div>
         <div class="navbar-actions">
             <div class="navbar-menu" id="navbarMenu">

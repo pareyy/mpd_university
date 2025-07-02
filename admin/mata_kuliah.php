@@ -2,8 +2,8 @@
 // Start session
 session_start();
 
-// Check if user is logged in and is a mahasiswa
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'mahasiswa') {
+// Check if user is logged in and is an admin
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../login.php");
     exit();
 }
@@ -11,179 +11,140 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'mahasiswa') {
 // Include database connection
 require_once '../koneksi.php';
 
-// Get mahasiswa information
+// Get admin information (optional, for display purposes)
 $user_id = $_SESSION['user_id'];
-$mahasiswa_query = "SELECT m.*, ps.nama as program_studi_nama, f.nama as fakultas_nama 
-                    FROM mahasiswa m 
-                    JOIN program_studi ps ON m.program_studi_id = ps.id 
-                    JOIN fakultas f ON ps.fakultas_id = f.id 
-                    WHERE m.user_id = '$user_id'";
-$mahasiswa_result = mysqli_query($conn, $mahasiswa_query);
-$mahasiswa = mysqli_fetch_assoc($mahasiswa_result);
 
-if (!$mahasiswa) {
-    echo "Data mahasiswa tidak ditemukan!";
-    exit();
-}
-
-// Get mata kuliah semester ini yang diambil mahasiswa
+// Get all mata kuliah with related information
 $mata_kuliah_query = "SELECT 
-    mk.kode_mk,
-    mk.nama_mk,
-    mk.sks,
-    mk.semester,
-    d.nama as dosen_nama,
-    j.hari,
-    j.jam_mulai,
-    j.jam_selesai,
-    j.ruang,
-    j.kelas,
-    n.nilai_akhir,
-    n.grade,
-    CASE 
-        WHEN n.grade IS NOT NULL THEN 'Selesai'
-        ELSE 'Aktif'
-    END as status
-FROM kelas k
-JOIN mata_kuliah mk ON k.mata_kuliah_id = mk.id
-JOIN dosen d ON mk.dosen_id = d.id
-LEFT JOIN jadwal j ON mk.id = j.mata_kuliah_id
-LEFT JOIN nilai n ON mk.id = n.mata_kuliah_id AND n.mahasiswa_id = k.mahasiswa_id
-WHERE k.mahasiswa_id = '{$mahasiswa['id']}'
-ORDER BY mk.nama_mk";
-
-$mk_result = mysqli_query($conn, $mata_kuliah_query);
-$mata_kuliah_semester_ini = [];
-while ($row = mysqli_fetch_assoc($mk_result)) {
-    $jadwal_text = '';
-    if ($row['hari'] && $row['jam_mulai'] && $row['jam_selesai']) {
-        $jadwal_text = $row['hari'] . ', ' . substr($row['jam_mulai'], 0, 5) . '-' . substr($row['jam_selesai'], 0, 5);
-    } else {
-        $jadwal_text = 'Belum dijadwalkan';
-    }
-    
-    $mata_kuliah_semester_ini[] = [
-        'kode' => $row['kode_mk'],
-        'nama' => $row['nama_mk'],
-        'sks' => $row['sks'],
-        'dosen' => $row['dosen_nama'],
-        'ruang' => $row['ruang'] ?: 'TBA',
-        'jadwal' => $jadwal_text,
-        'nilai' => $row['grade'] ?: 'Belum Ada',
-        'status' => $row['status'],
-        'kelas' => $row['kelas'] ?: 'A'
-    ];
-}
-
-// Get mata kuliah tersedia (yang belum diambil mahasiswa)
-$available_mk_query = "SELECT 
     mk.id,
     mk.kode_mk,
     mk.nama_mk,
     mk.sks,
     mk.semester,
+    mk.program_studi_id,
+    mk.dosen_id,
+    ps.nama as program_studi_nama,
     d.nama as dosen_nama,
-    (SELECT COUNT(*) FROM kelas k2 WHERE k2.mata_kuliah_id = mk.id) as terisi
+    (SELECT COUNT(*) FROM kelas k WHERE k.mata_kuliah_id = mk.id) as jumlah_mahasiswa
 FROM mata_kuliah mk
-JOIN dosen d ON mk.dosen_id = d.id
-WHERE mk.program_studi_id = '{$mahasiswa['program_studi_id']}'
-AND mk.id NOT IN (
-    SELECT mata_kuliah_id FROM kelas WHERE mahasiswa_id = '{$mahasiswa['id']}'
-)
-AND mk.semester <= '{$mahasiswa['semester']}'
-ORDER BY mk.semester, mk.nama_mk
-LIMIT 10";
+LEFT JOIN program_studi ps ON mk.program_studi_id = ps.id
+LEFT JOIN dosen d ON mk.dosen_id = d.id
+ORDER BY ps.nama, mk.semester, mk.nama_mk";
 
-$available_result = mysqli_query($conn, $available_mk_query);
-$mata_kuliah_tersedia = [];
-while ($row = mysqli_fetch_assoc($available_result)) {
-    $mata_kuliah_tersedia[] = [
-        'id' => $row['id'],
-        'kode' => $row['kode_mk'],
-        'nama' => $row['nama_mk'],
-        'sks' => $row['sks'],
-        'dosen' => $row['dosen_nama'],
-        'prasyarat' => $row['prasyarat'] ?: 'Tidak ada',
-        'kuota' => 30, // Default quota, you can add this column to mata_kuliah table
-        'terisi' => $row['terisi']
-    ];
+$mk_result = mysqli_query($conn, $mata_kuliah_query);
+$mata_kuliah_list = [];
+while ($row = mysqli_fetch_assoc($mk_result)) {
+    $mata_kuliah_list[] = $row;
 }
 
-// Calculate IPK
-$ipk_query = "SELECT 
-    AVG(CASE 
-        WHEN n.grade = 'A' THEN 4.0
-        WHEN n.grade = 'A-' THEN 3.7
-        WHEN n.grade = 'B+' THEN 3.3
-        WHEN n.grade = 'B' THEN 3.0
-        WHEN n.grade = 'B-' THEN 2.7
-        WHEN n.grade = 'C+' THEN 2.3
-        WHEN n.grade = 'C' THEN 2.0
-        WHEN n.grade = 'C-' THEN 1.7
-        WHEN n.grade = 'D' THEN 1.0
-        ELSE 0
-    END) as ipk_kumulatif,
-    SUM(mk.sks) as total_sks_lulus
-FROM nilai n
-JOIN mata_kuliah mk ON n.mata_kuliah_id = mk.id
-WHERE n.mahasiswa_id = '{$mahasiswa['id']}' AND n.grade IS NOT NULL AND n.grade != 'E'";
+// Get statistics
+$stats_query = "SELECT 
+    COUNT(*) as total_mata_kuliah,
+    SUM(mk.sks) as total_sks,
+    COUNT(DISTINCT mk.program_studi_id) as total_prodi,
+    COUNT(DISTINCT mk.dosen_id) as total_dosen
+FROM mata_kuliah mk";
 
-$ipk_result = mysqli_query($conn, $ipk_query);
-$ipk_data = mysqli_fetch_assoc($ipk_result);
-$ipk_kumulatif = $ipk_data['ipk_kumulatif'] ? number_format($ipk_data['ipk_kumulatif'], 2) : '0.00';
-$total_sks_lulus = $ipk_data['total_sks_lulus'] ?: 0;
+$stats_result = mysqli_query($conn, $stats_query);
+$stats = mysqli_fetch_assoc($stats_result);
 
-// Calculate semester IPK (current enrolled courses)
-$semester_ipk_query = "SELECT 
-    AVG(CASE 
-        WHEN n.grade = 'A' THEN 4.0
-        WHEN n.grade = 'A-' THEN 3.7
-        WHEN n.grade = 'B+' THEN 3.3
-        WHEN n.grade = 'B' THEN 3.0
-        WHEN n.grade = 'B-' THEN 2.7
-        WHEN n.grade = 'C+' THEN 2.3
-        WHEN n.grade = 'C' THEN 2.0
-        WHEN n.grade = 'C-' THEN 1.7
-        WHEN n.grade = 'D' THEN 1.0
-        ELSE 0
-    END) as ipk_semester
-FROM kelas k
-JOIN mata_kuliah mk ON k.mata_kuliah_id = mk.id
-LEFT JOIN nilai n ON mk.id = n.mata_kuliah_id AND n.mahasiswa_id = k.mahasiswa_id
-WHERE k.mahasiswa_id = '{$mahasiswa['id']}'
-AND n.grade IS NOT NULL";
+// Handle form submissions (Add, Edit, Delete mata kuliah)
+$message = '';
+$message_type = '';
 
-$semester_ipk_result = mysqli_query($conn, $semester_ipk_query);
-$semester_ipk_data = mysqli_fetch_assoc($semester_ipk_result);
-$ipk_semester = $semester_ipk_data['ipk_semester'] ? number_format($semester_ipk_data['ipk_semester'], 2) : '0.00';
-
-// Calculate progress
-$total_sks_semester = array_sum(array_column($mata_kuliah_semester_ini, 'sks'));
-$completed_courses = array_filter($mata_kuliah_semester_ini, function($mk) {
-    return $mk['nilai'] !== 'Belum Ada';
-});
-$progress_percentage = count($mata_kuliah_semester_ini) > 0 ? 
-    round((count($completed_courses) / count($mata_kuliah_semester_ini)) * 100) : 0;
-
-// Handle course enrollment
-if ($_POST && isset($_POST['enroll_course'])) {
-    $course_id = $_POST['course_id'];
-    
-    // Check if already enrolled
-    $check_query = "SELECT id FROM kelas WHERE mata_kuliah_id = '$course_id' AND mahasiswa_id = '{$mahasiswa['id']}'";
-    $check_result = mysqli_query($conn, $check_query);
-    
-    if (mysqli_num_rows($check_result) == 0) {
-        // Enroll student
-        $enroll_query = "INSERT INTO kelas (mata_kuliah_id, mahasiswa_id) VALUES ('$course_id', '{$mahasiswa['id']}')";
-        if (mysqli_query($conn, $enroll_query)) {
-            echo "<script>alert('Berhasil mendaftar mata kuliah!'); window.location.reload();</script>";
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    if (isset($_POST['add_mata_kuliah'])) {
+        $kode_mk = mysqli_real_escape_string($conn, $_POST['kode_mk']);
+        $nama_mk = mysqli_real_escape_string($conn, $_POST['nama_mk']);
+        $sks = (int)$_POST['sks'];
+        $semester = (int)$_POST['semester'];
+        $program_studi_id = (int)$_POST['program_studi_id'];
+        $dosen_id = (int)$_POST['dosen_id'];
+        
+        $insert_query = "INSERT INTO mata_kuliah (kode_mk, nama_mk, sks, semester, program_studi_id, dosen_id) 
+                        VALUES ('$kode_mk', '$nama_mk', $sks, $semester, $program_studi_id, $dosen_id)";
+        
+        if (mysqli_query($conn, $insert_query)) {
+            $message = 'Mata kuliah berhasil ditambahkan!';
+            $message_type = 'success';
+            // Refresh data
+            header("Location: " . $_SERVER['PHP_SELF']);
+            exit();
         } else {
-            echo "<script>alert('Gagal mendaftar mata kuliah!');</script>";
+            $message = 'Gagal menambahkan mata kuliah: ' . mysqli_error($conn);
+            $message_type = 'error';
         }
-    } else {
-        echo "<script>alert('Anda sudah terdaftar di mata kuliah ini!');</script>";
     }
+    
+    if (isset($_POST['edit_mata_kuliah'])) {
+        $mk_id = (int)$_POST['mk_id'];
+        $kode_mk = mysqli_real_escape_string($conn, $_POST['kode_mk']);
+        $nama_mk = mysqli_real_escape_string($conn, $_POST['nama_mk']);
+        $sks = (int)$_POST['sks'];
+        $semester = (int)$_POST['semester'];
+        $program_studi_id = (int)$_POST['program_studi_id'];
+        $dosen_id = (int)$_POST['dosen_id'];
+        
+        $update_query = "UPDATE mata_kuliah SET 
+                        kode_mk = '$kode_mk',
+                        nama_mk = '$nama_mk',
+                        sks = $sks,
+                        semester = $semester,
+                        program_studi_id = $program_studi_id,
+                        dosen_id = $dosen_id
+                        WHERE id = $mk_id";
+        
+        if (mysqli_query($conn, $update_query)) {
+            $message = 'Mata kuliah berhasil diperbarui!';
+            $message_type = 'success';
+            header("Location: " . $_SERVER['PHP_SELF']);
+            exit();
+        } else {
+            $message = 'Gagal memperbarui mata kuliah: ' . mysqli_error($conn);
+            $message_type = 'error';
+        }
+    }
+    
+    if (isset($_POST['delete_mata_kuliah'])) {
+        $mk_id = (int)$_POST['mk_id'];
+        
+        // Check if there are students enrolled
+        $check_query = "SELECT COUNT(*) as count FROM kelas WHERE mata_kuliah_id = $mk_id";
+        $check_result = mysqli_query($conn, $check_query);
+        $check_data = mysqli_fetch_assoc($check_result);
+        
+        if ($check_data['count'] > 0) {
+            $message = 'Tidak dapat menghapus mata kuliah karena masih ada mahasiswa yang terdaftar!';
+            $message_type = 'error';
+        } else {
+            $delete_query = "DELETE FROM mata_kuliah WHERE id = $mk_id";
+            if (mysqli_query($conn, $delete_query)) {
+                $message = 'Mata kuliah berhasil dihapus!';
+                $message_type = 'success';
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit();
+            } else {
+                $message = 'Gagal menghapus mata kuliah: ' . mysqli_error($conn);
+                $message_type = 'error';
+            }
+        }
+    }
+}
+
+// Get program studi for dropdown
+$prodi_query = "SELECT id, nama FROM program_studi ORDER BY nama";
+$prodi_result = mysqli_query($conn, $prodi_query);
+$program_studi_list = [];
+while ($row = mysqli_fetch_assoc($prodi_result)) {
+    $program_studi_list[] = $row;
+}
+
+// Get dosen for dropdown
+$dosen_query = "SELECT id, nama FROM dosen ORDER BY nama";
+$dosen_result = mysqli_query($conn, $dosen_query);
+$dosen_list = [];
+while ($row = mysqli_fetch_assoc($dosen_result)) {
+    $dosen_list[] = $row;
 }
 ?>
 <!DOCTYPE html>
@@ -191,21 +152,28 @@ if ($_POST && isset($_POST['enroll_course'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mata Kuliah - MPD University</title>
+    <title>Mata Kuliah - Admin MPD University</title>
     <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/mahasiswa.css">
+    <link rel="stylesheet" href="../assets/css/admin.css">
     <!-- Font Awesome CDN for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <?php include 'includes/nav_mahasiswa.php'; ?>
+    <?php include 'includes/nav_admin.php'; ?>
 
     <main>
         <div class="dashboard-container">
             <div class="dashboard-header">
-                <h1><i class="fas fa-book"></i> Mata Kuliah</h1>
-                <p>Kelola mata kuliah untuk <?php echo $mahasiswa['nama']; ?> - <?php echo $mahasiswa['program_studi_nama']; ?></p>
+                <h1><i class="fas fa-book"></i> Manajemen Mata Kuliah</h1>
+                <p>Kelola mata kuliah di MPD University</p>
             </div>
+
+            <?php if ($message): ?>
+                <div class="alert alert-<?php echo $message_type; ?>">
+                    <i class="fa-solid fa-<?php echo $message_type == 'success' ? 'check-circle' : 'exclamation-triangle'; ?>"></i>
+                    <?php echo $message; ?>
+                </div>
+            <?php endif; ?>
 
             <!-- Summary Cards -->
             <div class="stats-grid">
@@ -214,9 +182,9 @@ if ($_POST && isset($_POST['enroll_course'])) {
                         <i class="fas fa-book-open"></i>
                     </div>
                     <div class="stat-info">
-                        <h3>Mata Kuliah Diambil</h3>
-                        <p class="stat-number"><?php echo count($mata_kuliah_semester_ini); ?></p>
-                        <small>Semester ini</small>
+                        <h3>Total Mata Kuliah</h3>
+                        <p class="stat-number"><?php echo $stats['total_mata_kuliah']; ?></p>
+                        <small>Mata kuliah aktif</small>
                     </div>
                 </div>
 
@@ -226,279 +194,519 @@ if ($_POST && isset($_POST['enroll_course'])) {
                     </div>
                     <div class="stat-info">
                         <h3>Total SKS</h3>
-                        <p class="stat-number"><?php echo $total_sks_semester; ?></p>
-                        <small>SKS semester ini</small>
+                        <p class="stat-number"><?php echo $stats['total_sks']; ?></p>
+                        <small>SKS tersedia</small>
                     </div>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-icon">
-                        <i class="fas fa-star"></i>
+                        <i class="fas fa-graduation-cap"></i>
                     </div>
                     <div class="stat-info">
-                        <h3>IPK Semester</h3>
-                        <p class="stat-number"><?php echo $ipk_semester; ?></p>
-                        <small>Semester <?php echo $mahasiswa['semester']; ?></small>
+                        <h3>Program Studi</h3>
+                        <p class="stat-number"><?php echo $stats['total_prodi']; ?></p>
+                        <small>Program aktif</small>
                     </div>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-icon">
-                        <i class="fas fa-chart-line"></i>
+                        <i class="fas fa-chalkboard-teacher"></i>
                     </div>
                     <div class="stat-info">
-                        <h3>Progress</h3>
-                        <p class="stat-number"><?php echo $progress_percentage; ?>%</p>
-                        <small>Semester completion</small>
+                        <h3>Dosen Pengampu</h3>
+                        <p class="stat-number"><?php echo $stats['total_dosen']; ?></p>
+                        <small>Dosen aktif</small>
                     </div>
                 </div>
             </div>
 
-            <!-- Current Courses -->
+            <!-- Add New Course Section -->
             <div class="dashboard-section">
                 <div class="section-header">
-                    <h2><i class="fas fa-book-open"></i> Mata Kuliah Semester Ini</h2>
-                    <div class="section-actions">
-                        <button class="btn btn-secondary btn-sm" onclick="toggleView('grid')">
-                            <i class="fas fa-th"></i> Grid
-                        </button>
-                        <button class="btn btn-secondary btn-sm" onclick="toggleView('list')">
-                            <i class="fas fa-list"></i> List
-                        </button>
-                    </div>
+                    <h2><i class="fas fa-plus-circle"></i> Tambah Mata Kuliah Baru</h2>
+                    <button class="btn btn-primary" onclick="toggleAddForm()">
+                        <i class="fas fa-plus"></i> Tambah Mata Kuliah
+                    </button>
                 </div>
-                <?php if (!empty($mata_kuliah_semester_ini)): ?>
-                    <div class="courses-grid" id="coursesContainer">
-                        <?php foreach ($mata_kuliah_semester_ini as $index => $mk): ?>
-                            <div class="course-card" style="animation-delay: <?php echo ($index * 0.1); ?>s">
-                                <div class="course-header">
-                                    <div class="course-code">
-                                        <span class="badge badge-primary"><?php echo $mk['kode']; ?></span>
-                                        <span class="course-sks"><?php echo $mk['sks']; ?> SKS</span>
-                                    </div>
-                                    <div class="course-grade">
-                                        <?php if ($mk['nilai'] !== 'Belum Ada'): ?>
-                                            <span class="grade-badge grade-<?php echo strtolower(str_replace('+', 'plus', str_replace('-', 'minus', $mk['nilai']))); ?>">
-                                                <?php echo $mk['nilai']; ?>
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="grade-badge grade-pending">
-                                                <i class="fas fa-clock"></i> Pending
-                                            </span>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                                <div class="course-content">
-                                    <h3><?php echo $mk['nama']; ?></h3>
-                                    <p class="course-lecturer">
-                                        <i class="fas fa-user-tie"></i> <?php echo $mk['dosen']; ?>
-                                    </p>
-                                    <p class="course-schedule">
-                                        <i class="fas fa-clock"></i> <?php echo $mk['jadwal']; ?>
-                                    </p>
-                                    <p class="course-room">
-                                        <i class="fas fa-map-marker-alt"></i> <?php echo $mk['ruang']; ?> | Kelas <?php echo $mk['kelas']; ?>
-                                    </p>
-                                    <p class="course-status">
-                                        <i class="fas fa-info-circle"></i> Status: 
-                                        <span class="status-<?php echo strtolower($mk['status']); ?>"><?php echo $mk['status']; ?></span>
-                                    </p>
-                                </div>
-                                <div class="course-actions">
-                                    <button class="btn btn-primary btn-sm" onclick="showCourseDetail('<?php echo $mk['kode']; ?>')">
-                                        <i class="fas fa-eye"></i> Detail
-                                    </button>
-                                    <button class="btn btn-secondary btn-sm">
-                                        <i class="fas fa-file-alt"></i> Materi
-                                    </button>
-                                    <button class="btn btn-warning btn-sm">
-                                        <i class="fas fa-tasks"></i> Tugas
-                                    </button>
-                                </div>
+                
+                <div id="addCourseForm" class="form-container" style="display: none;">
+                    <form method="POST">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="kode_mk">Kode Mata Kuliah</label>
+                                <input type="text" id="kode_mk" name="kode_mk" class="form-control" required>
                             </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <div class="no-courses">
-                        <div class="no-content-icon">
-                            <i class="fas fa-book-open"></i>
-                        </div>
-                        <h3>Belum Ada Mata Kuliah</h3>
-                        <p>Anda belum mendaftar mata kuliah untuk semester ini.</p>
-                        <button class="btn btn-primary" onclick="scrollToSection('available-courses')">
-                            <i class="fas fa-plus"></i> Daftar Mata Kuliah
-                        </button>
-                    </div>
-                <?php endif; ?>
-            </div>
-
-            <!-- Available Courses -->
-            <div class="dashboard-section" id="available-courses">
-                <div class="section-header">
-                    <h2><i class="fas fa-plus-circle"></i> Mata Kuliah Tersedia</h2>
-                    <div class="section-actions">
-                        <button class="btn btn-secondary btn-sm" onclick="filterCourses('all')">
-                            <i class="fas fa-list"></i> Semua
-                        </button>
-                        <button class="btn btn-secondary btn-sm" onclick="filterCourses('available')">
-                            <i class="fas fa-check-circle"></i> Tersedia
-                        </button>
-                        <button class="btn btn-secondary btn-sm" onclick="filterCourses('full')">
-                            <i class="fas fa-times-circle"></i> Penuh
-                        </button>
-                    </div>
-                </div>
-                <div class="available-courses">
-                    <?php if (!empty($mata_kuliah_tersedia)): ?>
-                        <div class="courses-table-container">
-                            <table class="courses-table">
-                                <thead>
-                                    <tr>
-                                        <th><i class="fas fa-code"></i> Kode MK</th>
-                                        <th><i class="fas fa-book"></i> Nama Mata Kuliah</th>
-                                        <th><i class="fas fa-weight"></i> SKS</th>
-                                        <th><i class="fas fa-user-tie"></i> Dosen</th>
-                                        <th><i class="fas fa-link"></i> Prasyarat</th>
-                                        <th><i class="fas fa-users"></i> Kuota</th>
-                                        <th><i class="fas fa-cogs"></i> Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($mata_kuliah_tersedia as $mk): ?>
-                                        <tr class="course-row" data-status="<?php echo ($mk['terisi'] < $mk['kuota']) ? 'available' : 'full'; ?>">
-                                            <td>
-                                                <span class="badge badge-secondary"><?php echo $mk['kode']; ?></span>
-                                            </td>
-                                            <td>
-                                                <div class="course-name-cell">
-                                                    <span class="course-title"><?php echo $mk['nama']; ?></span>
-                                                    <small class="course-semester">Semester <?php echo $mk['semester'] ?? 'N/A'; ?></small>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span class="sks-badge"><?php echo $mk['sks']; ?> SKS</span>
-                                            </td>
-                                            <td>
-                                                <div class="lecturer-info">
-                                                    <i class="fas fa-user-circle"></i>
-                                                    <?php echo $mk['dosen']; ?>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span class="prerequisite-info"><?php echo $mk['prasyarat']; ?></span>
-                                            </td>
-                                            <td>
-                                                <div class="quota-info">
-                                                    <span class="quota-text">
-                                                        <?php echo $mk['terisi']; ?>/<?php echo $mk['kuota']; ?>
-                                                    </span>
-                                                    <div class="quota-bar">
-                                                        <div class="quota-fill" style="width: <?php echo ($mk['terisi']/$mk['kuota'])*100; ?>%"></div>
-                                                    </div>
-                                                    <small class="quota-status <?php echo ($mk['terisi'] < $mk['kuota']) ? 'available' : 'full'; ?>">
-                                                        <?php echo ($mk['terisi'] < $mk['kuota']) ? 'Tersedia' : 'Penuh'; ?>
-                                                    </small>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <?php if ($mk['terisi'] < $mk['kuota']): ?>
-                                                    <form method="POST" style="display: inline;">
-                                                        <input type="hidden" name="course_id" value="<?php echo $mk['id']; ?>">
-                                                        <button type="submit" name="enroll_course" class="btn btn-success btn-sm enroll-btn" 
-                                                                onclick="return confirmEnroll('<?php echo addslashes($mk['nama']); ?>')"
-                                                                data-course="<?php echo $mk['nama']; ?>">
-                                                            <i class="fas fa-plus"></i> Daftar
-                                                        </button>
-                                                    </form>
-                                                <?php else: ?>
-                                                    <button class="btn btn-secondary btn-sm" disabled>
-                                                        <i class="fas fa-times"></i> Penuh
-                                                    </button>
-                                                <?php endif; ?>
-                                            </td>
-                                        </tr>
+                            <div class="form-group">
+                                <label for="nama_mk">Nama Mata Kuliah</label>
+                                <input type="text" id="nama_mk" name="nama_mk" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="sks">SKS</label>
+                                <select id="sks" name="sks" class="form-control" required>
+                                    <option value="">Pilih SKS</option>
+                                    <option value="1">1 SKS</option>
+                                    <option value="2">2 SKS</option>
+                                    <option value="3">3 SKS</option>
+                                    <option value="4">4 SKS</option>
+                                    <option value="6">6 SKS</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="semester">Semester</label>
+                                <select id="semester" name="semester" class="form-control" required>
+                                    <option value="">Pilih Semester</option>
+                                    <?php for ($i = 1; $i <= 8; $i++): ?>
+                                        <option value="<?php echo $i; ?>">Semester <?php echo $i; ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="program_studi_id">Program Studi</label>
+                                <select id="program_studi_id" name="program_studi_id" class="form-control" required>
+                                    <option value="">Pilih Program Studi</option>
+                                    <?php foreach ($program_studi_list as $prodi): ?>
+                                        <option value="<?php echo $prodi['id']; ?>"><?php echo $prodi['nama']; ?></option>
                                     <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php else: ?>
-                        <div class="no-available-courses">
-                            <div class="no-content-icon">
-                                <i class="fas fa-graduation-cap"></i>
+                                </select>
                             </div>
-                            <h3>Tidak Ada Mata Kuliah Tersedia</h3>
-                            <p>Semua mata kuliah untuk program studi dan semester Anda sudah diambil atau belum tersedia.</p>
+                            <div class="form-group">
+                                <label for="dosen_id">Dosen Pengampu</label>
+                                <select id="dosen_id" name="dosen_id" class="form-control" required>
+                                    <option value="">Pilih Dosen</option>
+                                    <?php foreach ($dosen_list as $dosen): ?>
+                                        <option value="<?php echo $dosen['id']; ?>"><?php echo $dosen['nama']; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
                         </div>
-                    <?php endif; ?>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="toggleAddForm()">Batal</button>
+                            <button type="submit" name="add_mata_kuliah" class="btn btn-success">
+                                <i class="fas fa-save"></i> Simpan Mata Kuliah
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
-            <!-- Academic Progress -->
+            <!-- Mata Kuliah List -->
             <div class="dashboard-section">
-                <h2><i class="fas fa-chart-pie"></i> Progress Akademik</h2>
-                <div class="progress-overview">
-                    <div class="semester-summary">
-                        <h3>Ringkasan Semester</h3>
-                        <div class="summary-stats">
-                            <div class="summary-item">
-                                <span class="summary-label">SKS Diambil:</span>
-                                <span class="summary-value"><?php echo $total_sks_semester; ?> SKS</span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-label">IPK Semester:</span>
-                                <span class="summary-value"><?php echo $ipk_semester; ?></span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-label">IPK Kumulatif:</span>
-                                <span class="summary-value"><?php echo $ipk_kumulatif; ?></span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-label">Total SKS Lulus:</span>
-                                <span class="summary-value"><?php echo $total_sks_lulus; ?> SKS</span>
-                            </div>
-                        </div>
+                <div class="section-header">
+                    <h2><i class="fas fa-list"></i> Daftar Mata Kuliah</h2>
+                    <div class="section-actions">
+                        <input type="text" id="searchInput" placeholder="Cari mata kuliah..." class="search-input">
+                        <select id="filterProdi" class="filter-select">
+                            <option value="">Semua Program Studi</option>
+                            <?php foreach ($program_studi_list as $prodi): ?>
+                                <option value="<?php echo $prodi['nama']; ?>"><?php echo $prodi['nama']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
-
-                    <div class="grade-distribution">
-                        <h3>Distribusi Nilai</h3>
-                        <div class="grade-chart">
-                            <?php
-                            $grades = array_filter(array_column($mata_kuliah_semester_ini, 'nilai'), function($grade) {
-                                return $grade !== 'Belum Ada';
-                            });
-                            
-                            if (!empty($grades)):
-                                $grade_counts = array_count_values($grades);
-                                foreach ($grade_counts as $grade => $count):
-                                    $percentage = ($count / count($grades)) * 100;
-                            ?>
-                                    <div class="grade-bar">
-                                        <div class="grade-info">
-                                            <span class="grade-badge grade-<?php echo strtolower(str_replace('+', 'plus', str_replace('-', 'minus', $grade))); ?>">
-                                                <?php echo $grade; ?>
-                                            </span>
-                                            <span class="grade-count"><?php echo $count; ?> mata kuliah</span>
+                </div>
+                
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Kode MK</th>
+                                <th>Nama Mata Kuliah</th>
+                                <th>SKS</th>
+                                <th>Semester</th>
+                                <th>Program Studi</th>
+                                <th>Dosen</th>
+                                <th>Mahasiswa</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="courseTableBody">
+                            <?php foreach ($mata_kuliah_list as $mk): ?>
+                                <tr>
+                                    <td>
+                                        <span class="badge badge-primary"><?php echo $mk['kode_mk']; ?></span>
+                                    </td>
+                                    <td>
+                                        <div class="course-name">
+                                            <strong><?php echo $mk['nama_mk']; ?></strong>
                                         </div>
-                                        <div class="bar-container">
-                                            <div class="bar-fill" style="width: <?php echo $percentage; ?>%"></div>
+                                    </td>
+                                    <td>
+                                        <span class="sks-badge"><?php echo $mk['sks']; ?> SKS</span>
+                                    </td>
+                                    <td>
+                                        <span class="semester-badge">Semester <?php echo $mk['semester']; ?></span>
+                                    </td>
+                                    <td><?php echo $mk['program_studi_nama']; ?></td>
+                                    <td>
+                                        <div class="dosen-info">
+                                            <i class="fas fa-user"></i>
+                                            <?php echo $mk['dosen_nama']; ?>
                                         </div>
-                                        <span class="percentage"><?php echo round($percentage, 1); ?>%</span>
-                                    </div>
-                            <?php 
-                                endforeach;
-                            else: 
-                            ?>
-                                <div class="no-grades">
-                                    <i class="fas fa-chart-bar"></i>
-                                    <p>Belum ada nilai yang tersedia untuk ditampilkan.</p>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
+                                    </td>
+                                    <td>
+                                        <span class="student-count"><?php echo $mk['jumlah_mahasiswa']; ?> mahasiswa</span>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn btn-sm btn-info" onclick="viewCourse(<?php echo $mk['id']; ?>, '<?php echo addslashes($mk['kode_mk']); ?>', '<?php echo addslashes($mk['nama_mk']); ?>', <?php echo $mk['sks']; ?>, <?php echo $mk['semester']; ?>, '<?php echo addslashes($mk['program_studi_nama']); ?>', '<?php echo addslashes($mk['dosen_nama']); ?>', <?php echo $mk['jumlah_mahasiswa']; ?>)">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-warning" onclick="editCourse(<?php echo $mk['id']; ?>, '<?php echo addslashes($mk['kode_mk']); ?>', '<?php echo addslashes($mk['nama_mk']); ?>', <?php echo $mk['sks']; ?>, <?php echo $mk['semester']; ?>, <?php echo $mk['program_studi_id'] ?? 0; ?>, <?php echo $mk['dosen_id'] ?? 0; ?>)">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <form method="POST" style="display: inline;" onsubmit="return confirmDelete('<?php echo addslashes($mk['nama_mk']); ?>')">
+                                                <input type="hidden" name="mk_id" value="<?php echo $mk['id']; ?>">
+                                                <button type="submit" name="delete_mata_kuliah" class="btn btn-sm btn-danger">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </main>
+
+    <script>
+        function toggleAddForm() {
+            const form = document.getElementById('addCourseForm');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function confirmDelete(courseName) {
+            return confirm('Apakah Anda yakin ingin menghapus mata kuliah "' + courseName + '"?');
+        }
+
+        function viewCourse(id, kode_mk, nama_mk, sks, semester, program_studi, dosen_nama, jumlah_mahasiswa) {
+            document.getElementById('view_kode_mk').textContent = kode_mk;
+            document.getElementById('view_nama_mk').textContent = nama_mk;
+            document.getElementById('view_sks').textContent = sks + ' SKS';
+            document.getElementById('view_semester').textContent = 'Semester ' + semester;
+            document.getElementById('view_program_studi').textContent = program_studi;
+            document.getElementById('view_dosen').textContent = dosen_nama;
+            document.getElementById('view_mahasiswa').textContent = jumlah_mahasiswa + ' mahasiswa';
+            
+            document.getElementById('viewModal').style.display = 'block';
+        }
+
+        function editCourse(id, kode_mk, nama_mk, sks, semester, program_studi_id, dosen_id) {
+            document.getElementById('edit_mk_id').value = id;
+            document.getElementById('edit_kode_mk').value = kode_mk;
+            document.getElementById('edit_nama_mk').value = nama_mk;
+            document.getElementById('edit_sks').value = sks;
+            document.getElementById('edit_semester').value = semester;
+            document.getElementById('edit_program_studi_id').value = program_studi_id;
+            document.getElementById('edit_dosen_id').value = dosen_id;
+            
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const viewModal = document.getElementById('viewModal');
+            const editModal = document.getElementById('editModal');
+            
+            if (event.target == viewModal) {
+                viewModal.style.display = 'none';
+            }
+            if (event.target == editModal) {
+                editModal.style.display = 'none';
+            }
+        }
+
+        // Search and filter functionality
+        document.getElementById('searchInput').addEventListener('keyup', filterTable);
+        document.getElementById('filterProdi').addEventListener('change', filterTable);
+
+        function filterTable() {
+            const searchInput = document.getElementById('searchInput').value.toLowerCase();
+            const prodiFilter = document.getElementById('filterProdi').value.toLowerCase();
+            const tbody = document.getElementById('courseTableBody');
+            const rows = tbody.getElementsByTagName('tr');
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const courseName = row.cells[1].textContent.toLowerCase();
+                const courseCode = row.cells[0].textContent.toLowerCase();
+                const prodi = row.cells[4].textContent.toLowerCase();
+
+                const matchesSearch = courseName.includes(searchInput) || courseCode.includes(searchInput);
+                const matchesProdi = prodiFilter === '' || prodi.includes(prodiFilter);
+
+                if (matchesSearch && matchesProdi) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+        }
+
+        // Auto-hide alerts after 3 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const alert = document.querySelector('.alert');
+            if (alert) {
+                setTimeout(function() {
+                    alert.style.transition = 'opacity 0.5s ease-out';
+                    alert.style.opacity = '0';
+                    setTimeout(function() {
+                        alert.style.display = 'none';
+                    }, 500);
+                }, 3000);
+            }
+        });
+    </script>
+
+    <!-- Modal View Mata Kuliah -->
+    <div id="viewModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-eye"></i> Detail Mata Kuliah</h3>
+                <span class="close" onclick="closeModal('viewModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <label>Kode MK:</label>
+                        <span id="view_kode_mk" class="detail-value"></span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Nama Mata Kuliah:</label>
+                        <span id="view_nama_mk" class="detail-value"></span>
+                    </div>
+                    <div class="detail-item">
+                        <label>SKS:</label>
+                        <span id="view_sks" class="detail-value"></span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Semester:</label>
+                        <span id="view_semester" class="detail-value"></span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Program Studi:</label>
+                        <span id="view_program_studi" class="detail-value"></span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Dosen Pengampu:</label>
+                        <span id="view_dosen" class="detail-value"></span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Jumlah Mahasiswa:</label>
+                        <span id="view_mahasiswa" class="detail-value"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('viewModal')">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Edit Mata Kuliah -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> Edit Mata Kuliah</h3>
+                <span class="close" onclick="closeModal('editModal')">&times;</span>
+            </div>
+            <form method="POST">
+                <div class="modal-body">
+                    <input type="hidden" id="edit_mk_id" name="mk_id">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="edit_kode_mk">Kode MK *</label>
+                            <input type="text" id="edit_kode_mk" name="kode_mk" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit_nama_mk">Nama Mata Kuliah *</label>
+                            <input type="text" id="edit_nama_mk" name="nama_mk" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="edit_sks">SKS *</label>
+                            <select id="edit_sks" name="sks" class="form-control" required>
+                                <option value="">Pilih SKS</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="6">6</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit_semester">Semester *</label>
+                            <select id="edit_semester" name="semester" class="form-control" required>
+                                <option value="">Pilih Semester</option>
+                                <?php for ($i = 1; $i <= 8; $i++): ?>
+                                    <option value="<?php echo $i; ?>"><?php echo $i; ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="edit_program_studi_id">Program Studi *</label>
+                            <select id="edit_program_studi_id" name="program_studi_id" class="form-control" required>
+                                <option value="">Pilih Program Studi</option>
+                                <?php foreach ($program_studi_list as $prodi): ?>
+                                    <option value="<?php echo $prodi['id']; ?>"><?php echo $prodi['nama']; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit_dosen_id">Dosen Pengampu *</label>
+                            <select id="edit_dosen_id" name="dosen_id" class="form-control" required>
+                                <option value="">Pilih Dosen</option>
+                                <?php foreach ($dosen_list as $dosen): ?>
+                                    <option value="<?php echo $dosen['id']; ?>"><?php echo $dosen['nama']; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('editModal')">Batal</button>
+                    <button type="submit" name="edit_mata_kuliah" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Simpan Perubahan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        .modal-header {
+            padding: 1.5rem 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .close {
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .close:hover {
+            opacity: 1;
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .modal-footer {
+            padding: 1.5rem 2rem;
+            background: #f8fafc;
+            border-radius: 0 0 12px 12px;
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .detail-item label {
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.875rem;
+        }
+
+        .detail-item span {
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .modal-content {
+                width: 95%;
+                margin: 2% auto;
+            }
+
+            .detail-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .modal-footer {
+                flex-direction: column;
+            }
+
+            .modal-footer .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
 
     <?php include '../includes/footer.php'; ?>
 

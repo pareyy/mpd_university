@@ -83,6 +83,7 @@ $available_mk_query = "SELECT
     mk.sks,
     mk.semester,
     d.nama as dosen_nama,
+    mk.prasyarat,
     (SELECT COUNT(*) FROM kelas k2 WHERE k2.mata_kuliah_id = mk.id) as terisi
 FROM mata_kuliah mk
 JOIN dosen d ON mk.dosen_id = d.id
@@ -103,7 +104,7 @@ while ($row = mysqli_fetch_assoc($available_result)) {
         'nama' => $row['nama_mk'],
         'sks' => $row['sks'],
         'dosen' => $row['dosen_nama'],
-        'prasyarat' => $row['prasyarat'] ?: 'Tidak ada',
+        'prasyarat' => !empty($row['prasyarat']) ? $row['prasyarat'] : 'Tidak ada',
         'kuota' => 30, // Default quota, you can add this column to mata_kuliah table
         'terisi' => $row['terisi']
     ];

@@ -199,7 +199,7 @@ $attendance_percentage = $attendance_data['total_absensi'] > 0 ?
     <?php include 'includes/nav_mahasiswa.php'; ?>
 
     <main>
-        <div class="dashboard-container dashboard-mahasiswa">
+        <div class="dashboard-container">
             <div class="page-header">
                 <h1><i class="fas fa-graduation-cap"></i> Dashboard Mahasiswa</h1>
                 <div class="page-info">
